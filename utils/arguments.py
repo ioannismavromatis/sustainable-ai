@@ -55,6 +55,9 @@ def arguments():
     parser.add_argument(
         "--resume", "-r", action="store_true", default=False, help="Resume from model"
     )
+    parser.add_argument(
+        "--fresh", "-f", action="store_true", default=False, help="Delete all old results"
+    )
     args = parser.parse_args()
 
     return args
