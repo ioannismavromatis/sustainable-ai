@@ -1,11 +1,13 @@
 import os
 import sys
 import time
+
 import utils
 
 TOTAL_BAR_LENGTH = 65.0
 last_time = time.time()
 begin_time = last_time
+
 
 def terminal_width():
     if os.name == "nt":
@@ -13,8 +15,9 @@ def terminal_width():
     else:
         _, term_width = os.popen("stty size", "r").read().split()
         term_width = int(term_width)
-        
+
     return term_width
+
 
 def progress_bar(current, total, msg=None):
     global last_time, begin_time
@@ -46,7 +49,7 @@ def progress_bar(current, total, msg=None):
     msg = "".join(L)
     sys.stdout.write(msg)
     term_width = terminal_width()
-    
+
     for i in range(term_width - int(TOTAL_BAR_LENGTH) - len(msg) - 3):
         sys.stdout.write(" ")
 

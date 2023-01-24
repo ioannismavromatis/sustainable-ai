@@ -1,5 +1,6 @@
 import argparse
 
+
 def arguments():
     parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
     parser.add_argument(
@@ -56,9 +57,12 @@ def arguments():
         "--resume", "-r", action="store_true", default=False, help="Resume from model"
     )
     parser.add_argument(
-        "--fresh", "-f", action="store_true", default=False, help="Delete all old results"
+        "--fresh",
+        "-f",
+        action="store_true",
+        default=False,
+        help="Delete all old results",
     )
     args = parser.parse_args()
 
     return args
-

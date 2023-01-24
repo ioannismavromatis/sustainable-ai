@@ -1,6 +1,6 @@
-import logging
 import os
 import ssl
+import time
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -8,10 +8,17 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 
+import utils.log as logger
 from models import *
-from utils import progress_bar, arguments
+from power.generic_tracker import GenericTracker
+from utils import arguments, clean, progress_bar
 
-logging.basicConfig(encoding="utf-8", level=logging.INFO)
+LOGGER = os.environ.get("LOGGER", "info")
+
+custom_logger = logger.get_logger(__name__)
+custom_logger = logger.set_level(__name__, LOGGER)
+custom_logger.debug("Logger initiated: %s", custom_logger)
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # Training
@@ -82,45 +89,7 @@ def test(args, model, criterion, device, test_loader, epoch, net):
         torch.save(state, model_path)
 
 
-def import_module(args):
-    power_tool = __import__(args.evaluation_tool)
-
-    if args.evaluation_tool == "eco2ai":
-        power_tool.set_params(
-            project_name="eco2ai",
-            experiment_description=model.__class__.__name__,
-            file_name="results.csv",
-        )
-
-    return power_tool
-
-
-def power_evaluation(args):
-    valid_tools = ["eco2ai", "codecarbon", "carbontracker"]
-
-    if args.evaluation_tool is not None:
-        tool = args.evaluation_tool.lower()
-        if args.evaluation_tool not in valid_tools:
-            raise ValueError(
-                f'Tool "{args.evaluation_tool}" is not available tool for evaluation. Available tools are "Eco2AI", "CodeCarbon", and "CarbonTracker"'
-            )
-
-        logging.info(
-            f"Tool '{args.evaluation_tool}' will be used for power performance evaluation"
-        )
-
-        power_tool = import_module(args)
-
-        return power_tool
-    else:
-        logging.info("No tool will be used for the power performance evaluation")
-
-        return None
-
-
 def main(args):
-    power_tool = power_evaluation(args)
-
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     use_mps = not args.no_mps and torch.backends.mps.is_available()
 
@@ -188,6 +157,8 @@ def main(args):
     network_list.append(RegNetX_200MF())
     network_list.append(RegNetX_200MF())
 
+    tracker = GenericTracker(args, args.evaluation_tool)
+
     for net in network_list:
         start_epoch = 1  # start from epoch 1 or last model epoch
         print(f"==> Run experiment for network: {net.__class__.__name__}")
@@ -207,6 +178,7 @@ def main(args):
         model = net.to(device)
         if device == "cuda":
             model = torch.nn.DataParallel(model)
+            torch.cuda.synchronize()
             cudnn.benchmark = True
 
         criterion = nn.CrossEntropyLoss()
@@ -215,28 +187,27 @@ def main(args):
         )
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
-        if power_tool is not None:
-            trackerEco2AI = power_tool.Tracker(
-                cpu_processes="all", ignore_warnings=True
-            )
-
         for epoch in range(start_epoch, args.epochs + 1):
-            if power_tool is not None:
-                trackerEco2AI.start()
+            if tracker is not None:
+                tracker.start()
 
             train(args, model, device, train_loader, optimizer, criterion, epoch)
 
-            if power_tool is not None:
-                trackerEco2AI.stop()
+            if tracker is not None:
+                tracker.stop()
+
+            time.sleep(2)
             test(args, model, criterion, device, test_loader, epoch, net)
             scheduler.step()
 
 
 if __name__ == "__main__":
     args = arguments()
+    if args.fresh:
+        clean.clean_all(args)
 
     try:
         main(args)
     except (KeyboardInterrupt, SystemExit):
-        logging.info("Program was interrupted. Gracefully stop it.")
+        custom_logger.info("Program was interrupted. Gracefully stop it.")
         os._exit(0)
