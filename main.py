@@ -1,4 +1,3 @@
-import argparse
 import logging
 import os
 import ssl
@@ -10,7 +9,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 
 from models import *
-from utils import progress_bar
+from utils import progress_bar, arguments
 
 logging.basicConfig(encoding="utf-8", level=logging.INFO)
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -75,7 +74,7 @@ def test(args, model, criterion, device, test_loader, epoch, net):
     # Save model.
     acc = 100.0 * correct / total
     if args.save_model:
-        print("Saving..")
+        print("Saving Current Model...")
         state = {"model": model.state_dict(), "acc": acc, "epoch": epoch, "net": net}
         if not os.path.isdir("model"):
             os.mkdir("model")
@@ -83,57 +82,44 @@ def test(args, model, criterion, device, test_loader, epoch, net):
         torch.save(state, model_path)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=128,
-        metavar="N",
-        help="input batch size for training (default: 128)",
-    )
-    parser.add_argument(
-        "--test-batch-size",
-        type=int,
-        default=100,
-        metavar="N",
-        help="input batch size for testing (default: 100)",
-    )
-    parser.add_argument(
-        "--learning-rate",
-        "-lr",
-        type=float,
-        default=0.1,
-        metavar="LR",
-        help="learning rate (default: 0.1)",
-    )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=10,
-        metavar="N",
-        help="number of epochs to train (default: 10)",
-    )
-    parser.add_argument(
-        "--no-cuda", action="store_true", default=False, help="disables CUDA training"
-    )
-    parser.add_argument(
-        "--no-mps",
-        action="store_true",
-        default=False,
-        help="disables macOS GPU training",
-    )
-    parser.add_argument(
-        "--save-model",
-        "-s",
-        action="store_true",
-        default=True,
-        help="For Saving the current Model",
-    )
-    parser.add_argument(
-        "--resume", "-r", action="store_true", default=True, help="Resume from model"
-    )
-    args = parser.parse_args()
+def import_module(args):
+    power_tool = __import__(args.evaluation_tool)
+
+    if args.evaluation_tool == "eco2ai":
+        power_tool.set_params(
+            project_name="eco2ai",
+            experiment_description=model.__class__.__name__,
+            file_name="results.csv",
+        )
+
+    return power_tool
+
+
+def power_evaluation(args):
+    valid_tools = ["eco2ai", "codecarbon", "carbontracker"]
+
+    if args.evaluation_tool is not None:
+        tool = args.evaluation_tool.lower()
+        if args.evaluation_tool not in valid_tools:
+            raise ValueError(
+                f'Tool "{args.evaluation_tool}" is not available tool for evaluation. Available tools are "Eco2AI", "CodeCarbon", and "CarbonTracker"'
+            )
+
+        logging.info(
+            f"Tool '{args.evaluation_tool}' will be used for power performance evaluation"
+        )
+
+        power_tool = import_module(args)
+
+        return power_tool
+    else:
+        logging.info("No tool will be used for the power performance evaluation")
+
+        return None
+
+
+def main(args):
+    power_tool = power_evaluation(args)
 
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     use_mps = not args.no_mps and torch.backends.mps.is_available()
@@ -152,6 +138,10 @@ def main():
     test_kwargs = {"batch_size": args.test_batch_size}
     if use_cuda:
         cuda_kwargs = {"num_workers": 1, "pin_memory": True, "shuffle": True}
+        train_kwargs.update(cuda_kwargs)
+        test_kwargs.update(cuda_kwargs)
+    else:
+        cuda_kwargs = {"shuffle": True}
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
@@ -178,21 +168,8 @@ def main():
         root="./data", train=False, download=True, transform=transform_test
     )
 
-    train_loader = torch.utils.data.DataLoader(trainset, **train_kwargs, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(testset, **test_kwargs, shuffle=False)
-
-    classes = (
-        "plane",
-        "car",
-        "bird",
-        "cat",
-        "deer",
-        "dog",
-        "frog",
-        "horse",
-        "ship",
-        "truck",
-    )
+    train_loader = torch.utils.data.DataLoader(trainset, **train_kwargs)
+    test_loader = torch.utils.data.DataLoader(testset, **test_kwargs)
 
     # Model
     network_list = []
@@ -238,15 +215,28 @@ def main():
         )
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
+        if power_tool is not None:
+            trackerEco2AI = power_tool.Tracker(
+                cpu_processes="all", ignore_warnings=True
+            )
+
         for epoch in range(start_epoch, args.epochs + 1):
+            if power_tool is not None:
+                trackerEco2AI.start()
+
             train(args, model, device, train_loader, optimizer, criterion, epoch)
+
+            if power_tool is not None:
+                trackerEco2AI.stop()
             test(args, model, criterion, device, test_loader, epoch, net)
             scheduler.step()
 
 
 if __name__ == "__main__":
+    args = arguments()
+
     try:
-        main()
+        main(args)
     except (KeyboardInterrupt, SystemExit):
         logging.info("Program was interrupted. Gracefully stop it.")
         os._exit(0)

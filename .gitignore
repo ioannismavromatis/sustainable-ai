@@ -1,5 +1,8 @@
 ####### Other .gitignore ########
 data/
+*.pth
+model/
+*.csv
 
 ######## Python .gitignore ########
 # Byte-compiled / optimized / DLL files
