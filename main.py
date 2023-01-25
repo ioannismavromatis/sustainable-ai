@@ -23,7 +23,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 # Training
 def train(args, model, device, train_loader, optimizer, criterion, epoch):
-    print("\nEpoch: %d" % epoch)
+    custom_logger.info("Training for Epoch: %s", epoch)
     model.train()
     train_loss = 0
     correct = 0
@@ -41,12 +41,18 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
         total += targets.size(0)
         correct += predicted.eq(targets).sum().item()
 
-        progress_bar(
-            batch_idx,
-            len(train_loader),
-            "Loss: %.3f | Acc: %.3f%% (%d/%d)"
-            % (train_loss / (batch_idx + 1), 100.0 * correct / total, correct, total),
-        )
+        if args.no_progress_bar:
+            progress_bar(
+                batch_idx,
+                len(train_loader),
+                "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                % (
+                    train_loss / (batch_idx + 1),
+                    100.0 * correct / total,
+                    correct,
+                    total,
+                ),
+            )
 
 
 # Testing
@@ -66,22 +72,23 @@ def test(args, model, criterion, device, test_loader, epoch, net):
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-            progress_bar(
-                batch_idx,
-                len(test_loader),
-                "Loss: %.3f | Acc: %.3f%% (%d/%d)"
-                % (
-                    test_loss / (batch_idx + 1),
-                    100.0 * correct / total,
-                    correct,
-                    total,
-                ),
-            )
+            if args.no_progress_bar:
+                progress_bar(
+                    batch_idx,
+                    len(test_loader),
+                    "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                    % (
+                        test_loss / (batch_idx + 1),
+                        100.0 * correct / total,
+                        correct,
+                        total,
+                    ),
+                )
 
     # Save model.
     acc = 100.0 * correct / total
     if args.save_model:
-        print("Saving Current Model...")
+        custom_logger.info("Saving Current Model...")
         state = {"model": model.state_dict(), "acc": acc, "epoch": epoch, "net": net}
         if not os.path.isdir("model"):
             os.mkdir("model")
@@ -95,13 +102,13 @@ def main(args):
 
     if use_cuda:
         device = torch.device("cuda")
-        print("CUDA is used")
+        custom_logger.info("CUDA is used")
     elif use_mps:
         device = torch.device("mps")
-        print("MPS is used")
+        custom_logger.info("MPS is used")
     else:
         device = torch.device("cpu")
-        print("CPU is used")
+        custom_logger.info("CPU is used")
 
     train_kwargs = {"batch_size": args.batch_size}
     test_kwargs = {"batch_size": args.test_batch_size}
@@ -142,7 +149,7 @@ def main(args):
 
     # Model
     network_list = []
-    print("==> Building model list..")
+    custom_logger.info("Building model list..")
     network_list.append(SimpleDLA())
     network_list.append(VGG("VGG19"))
     network_list.append(ResNet18())
@@ -157,22 +164,21 @@ def main(args):
     network_list.append(RegNetX_200MF())
     network_list.append(RegNetX_200MF())
 
-    tracker = GenericTracker(args, args.evaluation_tool)
-
     for net in network_list:
         start_epoch = 1  # start from epoch 1 or last model epoch
-        print(f"==> Run experiment for network: {net.__class__.__name__}")
+        custom_logger.info("Run experiment for network: %s", net.__class__.__name__)
         if args.resume:
             # Load model.
             load_path = "./model/" + net.__class__.__name__ + ".pth"
             if os.path.isfile(load_path):
-                print(f"==> Resuming model.. {net.__class__.__name__}")
+                custom_logger.info("Resuming model.. %s", net.__class__.__name__)
                 model = torch.load(load_path)
                 net.load_state_dict(model["model"])
                 start_epoch = model["epoch"] + 1
             else:
-                print(
-                    f'==> No "model" was found for network "{net.__class__.__name__}"! Skip loading and start from first epoch!'
+                custom_logger.info(
+                    'No "model" was found for network "%s"! Skip loading and start from first epoch!',
+                    net.__class__.__name__,
                 )
 
         model = net.to(device)
@@ -187,18 +193,26 @@ def main(args):
         )
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
+        custom_logger.info(
+            "Create a new tracker for network: %s", net.__class__.__name__
+        )
+        tracker = GenericTracker(args, net)
+
         for epoch in range(start_epoch, args.epochs + 1):
-            if tracker is not None:
+            if tracker.get_tracker():
                 tracker.start()
 
             train(args, model, device, train_loader, optimizer, criterion, epoch)
 
-            if tracker is not None:
-                tracker.stop()
+            if tracker.get_tracker():
+                results = tracker.stop()
 
             time.sleep(2)
             test(args, model, criterion, device, test_loader, epoch, net)
             scheduler.step()
+
+        custom_logger.info("Deleting current tracker...")
+        del tracker
 
 
 if __name__ == "__main__":

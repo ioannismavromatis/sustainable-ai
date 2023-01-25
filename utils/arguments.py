@@ -63,6 +63,12 @@ def arguments():
         default=False,
         help="Delete all old results",
     )
+    parser.add_argument(
+        "--no-progress-bar",
+        action="store_false",
+        default=True,
+        help="Hide the progress bar for training and inference",
+    )
     args = parser.parse_args()
 
     return args

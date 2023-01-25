@@ -30,6 +30,8 @@ class GenericTracker:
             )
         elif self.args.evaluation_tool == "carbontracker":
             power_tool = __import__(self.args.evaluation_tool + ".tracker")
+        elif self.args.evaluation_tool == "codecarbon":
+            power_tool = __import__(self.args.evaluation_tool)
 
         return power_tool
 
@@ -43,7 +45,8 @@ class GenericTracker:
                 )
 
             custom_logger.info(
-                f"Tool '{self.args.evaluation_tool}' will be used for power performance evaluation"
+                "Tool '%s' will be used for power performance evaluation",
+                self.args.evaluation_tool,
             )
 
             power_tool = self.import_module()
@@ -57,6 +60,10 @@ class GenericTracker:
                     log_dir="./results/",
                     log_file_prefix=self.net,
                 )
+            elif tool == "codecarbon":
+                tracker = power_tool.EmissionsTracker(
+                    save_to_file=True, output_dir="./results/", project_name=self.net
+                )
 
             return tracker
         else:
@@ -67,13 +74,21 @@ class GenericTracker:
             return None
 
     def start(self):
-        if self.standardised_tool == "eco2ai":
+        if self.standardised_tool == "eco2ai" or self.standardised_tool == "codecarbon":
             self.power_tool.start()
         elif self.standardised_tool == "carbontracker":
             self.power_tool.epoch_start()
 
     def stop(self):
-        if self.standardised_tool == "eco2ai":
-            self.power_tool.stop()
+        if self.standardised_tool == "eco2ai" or self.standardised_tool == "codecarbon":
+            results = self.power_tool.stop()
         elif self.standardised_tool == "carbontracker":
-            self.power_tool.epoch_end()
+            results = self.power_tool.epoch_end()
+
+        return results
+
+    def get_tracker(self):
+        if self.power_tool == None:
+            return False
+
+        return True

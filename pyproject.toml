@@ -13,6 +13,7 @@ torch = "^1.13.1"
 torchvision = "^0.14.1"
 eco2ai = {path = "../dist/eco2ai-0.3.4-py2.py3-none-any.whl"}
 carbontracker = "^1.1.7"
+codecarbon = "^2.1.4"
 
 [tool.poetry.group.dev.dependencies]
 docformatter = "^1.5.1"
