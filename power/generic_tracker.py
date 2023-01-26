@@ -20,14 +20,16 @@ class GenericTracker:
         self.standardised_tool = None
         self.power_tool = self.power_evaluation()
 
+    def _experiment_prefix(self):
+        return (
+            self.net + "-" + str(self.args.run_id)
+            if self.args.run_id != 0
+            else self.net
+        )
+
     def import_module(self):
         if self.args.evaluation_tool == "eco2ai":
             power_tool = __import__(self.args.evaluation_tool)
-            power_tool.set_params(
-                project_name="eco2ai",
-                experiment_description=self.net,
-                file_name="./results/resultsEco2AI.csv",
-            )
         elif self.args.evaluation_tool == "carbontracker":
             power_tool = __import__(self.args.evaluation_tool + ".tracker")
         elif self.args.evaluation_tool == "codecarbon":
@@ -52,17 +54,25 @@ class GenericTracker:
             power_tool = self.import_module()
 
             if tool == "eco2ai":
+                power_tool.set_params(
+                    project_name="eco2ai",
+                    experiment_description=self._experiment_prefix(),
+                    file_name="./results/resultsEco2AI.csv",
+                )
                 tracker = power_tool.Tracker(cpu_processes="all", ignore_warnings=True)
             elif tool == "carbontracker":
+
                 tracker = power_tool.tracker.CarbonTracker(
                     epochs=self.args.epochs,
                     monitor_epochs=self.args.epochs,
                     log_dir="./results/",
-                    log_file_prefix=self.net,
+                    log_file_prefix=self._experiment_prefix(),
                 )
             elif tool == "codecarbon":
                 tracker = power_tool.EmissionsTracker(
-                    save_to_file=True, output_dir="./results/", project_name=self.net
+                    save_to_file=True,
+                    output_dir="./results/",
+                    project_name=self._experiment_prefix(),
                 )
 
             return tracker

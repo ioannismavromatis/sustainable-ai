@@ -69,6 +69,18 @@ def arguments():
         default=True,
         help="Hide the progress bar for training and inference",
     )
+    parser.add_argument(
+        "--run-id",
+        type=int,
+        default=0,
+        help="Use a separate running identifier for multiple experiments",
+    )
+    parser.add_argument(
+        "--no-results",
+        action="store_false",
+        default=True,
+        help="Do not store results for training and inference",
+    )
     args = parser.parse_args()
 
     return args

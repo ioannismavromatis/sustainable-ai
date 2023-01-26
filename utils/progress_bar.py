@@ -42,7 +42,7 @@ def progress_bar(current, total, msg=None):
 
     L = []
     L.append("  Step: %s" % utils.format_time(step_time))
-    L.append(" | Tot: %s" % utils.format_time(tot_time))
+    L.append(" | Total: %s" % utils.format_time(tot_time))
     if msg:
         L.append(" | " + msg)
 

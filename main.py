@@ -11,7 +11,8 @@ from torchvision import datasets, transforms
 import utils.log as logger
 from models import *
 from power.generic_tracker import GenericTracker
-from utils import arguments, clean, progress_bar
+from power.save_results import Results
+from utils import arguments, clean, progress_bar, format_time, file_name_generator
 
 LOGGER = os.environ.get("LOGGER", "info")
 
@@ -22,12 +23,13 @@ custom_logger.debug("Logger initiated: %s", custom_logger)
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # Training
-def train(args, model, device, train_loader, optimizer, criterion, epoch):
+def train(args, model, device, train_loader, optimizer, criterion, epoch, results):
     custom_logger.info("Training for Epoch: %s", epoch)
     model.train()
     train_loss = 0
     correct = 0
     total = 0
+    begin_time = time.time()
     for batch_idx, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
@@ -45,7 +47,7 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
             progress_bar(
                 batch_idx,
                 len(train_loader),
-                "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                "Loss: %.3f | Accuracy: %.3f%% (%d/%d)"
                 % (
                     train_loss / (batch_idx + 1),
                     100.0 * correct / total,
@@ -53,14 +55,23 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
                     total,
                 ),
             )
-
+    
+    if args.no_results:
+        end_time = time.time()
+        tot_time = format_time(end_time - begin_time)
+        step_time = format_time((end_time - begin_time)/len(train_loader))
+        final_loss = "%.3f" % (train_loss / (batch_idx + 1))
+        accuracy = 100.0 * correct / total
+        mode = file_name_generator(args, 'train')
+        results.save_results(mode, epoch, tot_time, step_time, final_loss, accuracy)
 
 # Testing
-def test(args, model, criterion, device, test_loader, epoch, net):
+def test(args, model, criterion, device, test_loader, epoch, net, results):
     model.eval()
     test_loss = 0
     correct = 0
     total = 0
+    begin_time = time.time()
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(test_loader):
             inputs, targets = inputs.to(device), targets.to(device)
@@ -76,7 +87,7 @@ def test(args, model, criterion, device, test_loader, epoch, net):
                 progress_bar(
                     batch_idx,
                     len(test_loader),
-                    "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                    "Loss: %.3f | Accuracy: %.3f%% (%d/%d)"
                     % (
                         test_loss / (batch_idx + 1),
                         100.0 * correct / total,
@@ -84,6 +95,14 @@ def test(args, model, criterion, device, test_loader, epoch, net):
                         total,
                     ),
                 )
+    if args.no_results:
+        end_time = time.time()
+        tot_time = format_time(end_time - begin_time)
+        step_time = format_time((end_time - begin_time)/len(test_loader))
+        final_loss = "%.3f" % (test_loss / (batch_idx + 1))
+        accuracy = 100.0 * correct / total
+        mode = file_name_generator(args, 'test')
+        results.save_results(mode, epoch, tot_time, step_time, final_loss, accuracy)
 
     # Save model.
     acc = 100.0 * correct / total
@@ -102,13 +121,13 @@ def main(args):
 
     if use_cuda:
         device = torch.device("cuda")
-        custom_logger.info("CUDA is used")
+        custom_logger.info("NVIDIA GPU is detected: CUDA will used")
     elif use_mps:
         device = torch.device("mps")
-        custom_logger.info("MPS is used")
+        custom_logger.info("Apple Silicon is detected: MPS will be used")
     else:
         device = torch.device("cpu")
-        custom_logger.info("CPU is used")
+        custom_logger.info("CPU will be used")
 
     train_kwargs = {"batch_size": args.batch_size}
     test_kwargs = {"batch_size": args.test_batch_size}
@@ -197,29 +216,39 @@ def main(args):
             "Create a new tracker for network: %s", net.__class__.__name__
         )
         tracker = GenericTracker(args, net)
+        results = Results(net.__class__.__name__, run_id=args.run_id)
 
         for epoch in range(start_epoch, args.epochs + 1):
             if tracker.get_tracker():
                 tracker.start()
 
-            train(args, model, device, train_loader, optimizer, criterion, epoch)
+            train(args, model, device, train_loader, optimizer, criterion, epoch, results)
 
             if tracker.get_tracker():
-                results = tracker.stop()
+                tracker.stop()
 
             time.sleep(2)
-            test(args, model, criterion, device, test_loader, epoch, net)
+            test(args, model, criterion, device, test_loader, epoch, net, results)
             scheduler.step()
 
-        custom_logger.info("Deleting current tracker...")
+        custom_logger.info("Deleting current tracker and results objects...")
         del tracker
+        del results
 
 
 if __name__ == "__main__":
     args = arguments()
+    custom_logger.info(
+        "============ Pytorch CIFAR10 Power Consumption Investigation ============"
+    )
+
+    if args.run_id != 0:
+        custom_logger.info("Starting experiment with ID: %s", args.run_id)
     if args.fresh:
         clean.clean_all(args)
-
+    if not args.no_results:
+        custom_logger.info("No results will be recorded for this experiment")
+    
     try:
         main(args)
     except (KeyboardInterrupt, SystemExit):
