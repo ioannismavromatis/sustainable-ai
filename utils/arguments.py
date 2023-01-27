@@ -81,6 +81,12 @@ def arguments():
         default=True,
         help="Do not store results for training and inference",
     )
+    parser.add_argument(
+        "--get-stats",
+        action="store_true",
+        default=False,
+        help="Get statistics for the GPU and CPU utilisation",
+    )
     args = parser.parse_args()
 
     return args

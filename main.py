@@ -2,6 +2,7 @@ import os
 import ssl
 import time
 
+import pynvml
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -11,12 +12,15 @@ from torchvision import datasets, transforms
 import utils.log as logger
 from models import *
 from power.generic_tracker import GenericTracker
-from power.save_results import Results
-from utils import arguments, clean, progress_bar, format_time, file_name_generator, ascii
+from power.stats import Stats
+from power.tool_results import ToolResults
+from utils import (arguments, ascii, clean, file_name_generator, format_time,
+                   progress_bar)
 
 ascii.print_ascii()
 
 LOGGER = os.environ.get("LOGGER", "info")
+SAMPLING_RATE = os.environ.get("SAMPLING_RATE", 0.1)
 
 custom_logger = logger.get_logger(__name__)
 custom_logger = logger.set_level(__name__, LOGGER)
@@ -57,15 +61,36 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch, result
                     total,
                 ),
             )
-    
+
     if args.no_results:
         end_time = time.time()
         tot_time = format_time(end_time - begin_time)
-        step_time = format_time((end_time - begin_time)/len(train_loader))
+        step_time = format_time((end_time - begin_time) / len(train_loader))
         final_loss = "%.3f" % (train_loss / (batch_idx + 1))
         accuracy = 100.0 * correct / total
-        mode = file_name_generator(args, 'train')
+        mode = file_name_generator(args, "train")
         results.save_results(mode, epoch, tot_time, step_time, final_loss, accuracy)
+
+
+def make_network_list():
+    network_list = []
+    custom_logger.info("Building model list..")
+    network_list.append(SimpleDLA())
+    network_list.append(VGG("VGG19"))
+    network_list.append(ResNet18())
+    network_list.append(PreActResNet18())
+    network_list.append(GoogLeNet())
+    network_list.append(DenseNet121())
+    network_list.append(ResNeXt29_2x64d())
+    network_list.append(MobileNet())
+    network_list.append(MobileNetV2())
+    network_list.append(SENet18())
+    network_list.append(EfficientNetB0())
+    network_list.append(RegNetX_200MF())
+    network_list.append(RegNetX_200MF())
+
+    return network_list
+
 
 # Testing
 def test(args, model, criterion, device, test_loader, epoch, net, results):
@@ -100,10 +125,10 @@ def test(args, model, criterion, device, test_loader, epoch, net, results):
     if args.no_results:
         end_time = time.time()
         tot_time = format_time(end_time - begin_time)
-        step_time = format_time((end_time - begin_time)/len(test_loader))
+        step_time = format_time((end_time - begin_time) / len(test_loader))
         final_loss = "%.3f" % (test_loss / (batch_idx + 1))
         accuracy = 100.0 * correct / total
-        mode = file_name_generator(args, 'test')
+        mode = file_name_generator(args, "test")
         results.save_results(mode, epoch, tot_time, step_time, final_loss, accuracy)
 
     # Save model.
@@ -168,22 +193,10 @@ def main(args):
     train_loader = torch.utils.data.DataLoader(trainset, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(testset, **test_kwargs)
 
-    # Model
-    network_list = []
-    custom_logger.info("Building model list..")
-    network_list.append(SimpleDLA())
-    network_list.append(VGG("VGG19"))
-    network_list.append(ResNet18())
-    network_list.append(PreActResNet18())
-    network_list.append(GoogLeNet())
-    network_list.append(DenseNet121())
-    network_list.append(ResNeXt29_2x64d())
-    network_list.append(MobileNet())
-    network_list.append(MobileNetV2())
-    network_list.append(SENet18())
-    network_list.append(EfficientNetB0())
-    network_list.append(RegNetX_200MF())
-    network_list.append(RegNetX_200MF())
+    network_list = make_network_list()
+
+    pynvml.nvmlInit()
+    deviceCount = pynvml.nvmlDeviceGetCount()
 
     for net in network_list:
         start_epoch = 1  # start from epoch 1 or last model epoch
@@ -218,24 +231,48 @@ def main(args):
             "Create a new tracker for network: %s", net.__class__.__name__
         )
         tracker = GenericTracker(args, net)
-        results = Results(net.__class__.__name__, run_id=args.run_id)
+        results = ToolResults(net.__class__.__name__, run_id=args.run_id)
+        stats = Stats(
+            pynvml,
+            deviceCount,
+            SAMPLING_RATE,
+            net.__class__.__name__,
+            run_id=args.run_id,
+        )
 
         for epoch in range(start_epoch, args.epochs + 1):
+            if args.get_stats:
+                stats.start()
             if tracker.get_tracker():
                 tracker.start()
 
-            train(args, model, device, train_loader, optimizer, criterion, epoch, results)
+            train(
+                args, model, device, train_loader, optimizer, criterion, epoch, results
+            )
 
+            if args.get_stats:
+                mode = file_name_generator(args, "train")
+                stats.save_results(mode, epoch)
             if tracker.get_tracker():
                 tracker.stop()
 
             time.sleep(2)
+
+            if args.get_stats:
+                stats.reset()
+
             test(args, model, criterion, device, test_loader, epoch, net, results)
+
+            if args.get_stats:
+                mode = file_name_generator(args, "test")
+                stats.save_results(mode, epoch)
+
             scheduler.step()
 
         custom_logger.info("Deleting current tracker and results objects...")
         del tracker
         del results
+        del stats
 
 
 if __name__ == "__main__":
@@ -250,7 +287,7 @@ if __name__ == "__main__":
         clean.clean_all(args)
     if not args.no_results:
         custom_logger.info("No results will be recorded for this experiment")
-    
+
     try:
         main(args)
     except (KeyboardInterrupt, SystemExit):

@@ -16,7 +16,7 @@ custom_logger.debug("Logger initiated: %s", custom_logger)
 ssl._create_default_https_context = ssl._create_unverified_context
 
 
-class Results:
+class ToolResults:
     def __init__(self, net, file_dir="./results", file_name="mlresults.csv", run_id=0):
         self.project_name = net
         self.net = net
@@ -40,22 +40,24 @@ class Results:
         return results_dict
 
     def __find_file(self, mode):
-        tmp_list = self.file_name.split('.')
-        tmp_list[0] = tmp_list[0] + '_' + mode
-        results_file = '.'.join(map(str,tmp_list))
-        if 'train' in mode or 'test' in mode:
+        tmp_list = self.file_name.split(".")
+        tmp_list[0] = tmp_list[0] + "_" + mode
+        results_file = ".".join(map(str, tmp_list))
+        if "train" in mode or "test" in mode:
             return results_file
         else:
-            raise ValueError("A wrong mode type was given. Give either 'train' or 'test'.")
+            raise ValueError(
+                "A wrong mode type was given. Give either 'train' or 'test'."
+            )
 
     def __write_to_csv(self, mode, epoch, duration, step, loss, accuracy):
         results_dict = self.__construct_results_dict(
             epoch, duration, step, loss, accuracy
         )
 
-        results_file = self.__find_file(mode)      
+        results_file = self.__find_file(mode)
         self.file_path = self.file_dir + "/" + results_file
-          
+
         if not os.path.isfile(self.file_path):
             csv_file = open(self.file_path, "w+")
             pd.DataFrame(results_dict).to_csv(self.file_path, index=False)
