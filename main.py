@@ -12,7 +12,9 @@ import utils.log as logger
 from models import *
 from power.generic_tracker import GenericTracker
 from power.save_results import Results
-from utils import arguments, clean, progress_bar, format_time, file_name_generator
+from utils import arguments, clean, progress_bar, format_time, file_name_generator, ascii
+
+ascii.print_ascii()
 
 LOGGER = os.environ.get("LOGGER", "info")
 
