@@ -2,7 +2,6 @@ import os
 import ssl
 import time
 
-import pynvml
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -82,18 +81,18 @@ def make_network_list():
     network_list = []
     custom_logger.info("Building model list..")
     network_list.append(SimpleDLA())
-    network_list.append(VGG("VGG19"))
-    network_list.append(ResNet18())
-    network_list.append(PreActResNet18())
-    network_list.append(GoogLeNet())
-    network_list.append(DenseNet121())
-    network_list.append(ResNeXt29_2x64d())
-    network_list.append(MobileNet())
-    network_list.append(MobileNetV2())
-    network_list.append(SENet18())
-    network_list.append(EfficientNetB0())
-    network_list.append(RegNetX_200MF())
-    network_list.append(RegNetX_200MF())
+    # network_list.append(VGG("VGG19"))
+    # network_list.append(ResNet18())
+    # network_list.append(PreActResNet18())
+    # network_list.append(GoogLeNet())
+    # network_list.append(DenseNet121())
+    # network_list.append(ResNeXt29_2x64d())
+    # network_list.append(MobileNet())
+    # network_list.append(MobileNetV2())
+    # network_list.append(SENet18())
+    # network_list.append(EfficientNetB0())
+    # network_list.append(RegNetX_200MF())
+    # network_list.append(RegNetX_200MF())
 
     return network_list
 
@@ -201,11 +200,7 @@ def main(args):
 
     network_list = make_network_list()
 
-    pynvml.nvmlInit()
-    deviceCount = pynvml.nvmlDeviceGetCount()
     stats = Stats(
-        pynvml,
-        deviceCount,
         SAMPLING_RATE,
         run_id=args.run_id,
     )

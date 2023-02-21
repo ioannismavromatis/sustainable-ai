@@ -8,6 +8,7 @@ import pandas as pd
 import utils.log as logger
 
 from .intel import IntelCPU
+from .nvidia import NvidiaGPU
 
 custom_logger = logger.get_logger(__name__)
 custom_logger = logger.set_level(__name__, "info")
@@ -17,8 +18,6 @@ custom_logger.debug("Logger initiated: %s", custom_logger)
 class Stats(Thread):
     def __init__(
         self,
-        pynvml,
-        deviceCount,
         sleep_time,
         net=None,
         run_id=0,
@@ -28,19 +27,11 @@ class Stats(Thread):
         Thread.__init__(self)
         self._stop_event = Event()
         self.run_id = run_id
-
-        self.pynvml = pynvml
-        self.deviceCount = deviceCount
         self.sleep_time = sleep_time
         self.net = net
         self.file_dir = file_dir
         self.file_name = file_name
         self.file_path = None
-
-        self.gpu_power_w = []
-        self.gpu_temperature_C = []
-        self.gpu_memory_free_B = []
-        self.gpu_memory_used_B = []
 
     def __generic_cpu(self) -> None:
         raise NotImplementedError
@@ -67,31 +58,8 @@ class Stats(Thread):
         raise NotImplementedError
 
     def __gpu_stats(self) -> None:
-        for i in range(self.deviceCount):
-            handle = self.pynvml.nvmlDeviceGetHandleByIndex(i)
-
-            self.gpu_power_w.append(self.pynvml.nvmlDeviceGetPowerUsage(handle))
-            self.gpu_temperature_C.append(
-                self.pynvml.nvmlDeviceGetTemperature(
-                    handle, self.pynvml.NVML_TEMPERATURE_GPU
-                )
-            )
-            memory = self.pynvml.nvmlDeviceGetMemoryInfo(handle)
-            self.gpu_memory_free_B.append(memory.free)
-            self.gpu_memory_used_B.append(memory.used)
-
-            custom_logger.debug(
-                "Power: %s", self.pynvml.nvmlDeviceGetPowerUsage(handle)
-            )
-            custom_logger.debug(
-                "Temperature: %s",
-                self.pynvml.nvmlDeviceGetTemperature(
-                    handle, self.pynvml.NVML_TEMPERATURE_GPU
-                ),
-            )
-            custom_logger.debug(
-                "Memory: %s", self.pynvml.nvmlDeviceGetMemoryInfo(handle)
-            )
+        self.nvidiaGPU = NvidiaGPU(self.sleep_time)
+        self.nvidiaGPU.start()
 
     def __experiment_prefix(self, mode, array_name):
         return (
@@ -210,8 +178,11 @@ class Stats(Thread):
         self._stop_event.set()
 
     def run(self):
+        self.__gpu_stats()
         self.__cpu_stats(cpu_type="Intel", cpu_process="current")
         while not self._stop_event.is_set():
-            self.__gpu_stats()
             # self.__get_cpu_stats()
             time.sleep(self.sleep_time)
+
+        self.intelCPU.stop()
+        self.nvidiaGPU.stop()

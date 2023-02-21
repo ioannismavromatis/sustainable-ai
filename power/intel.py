@@ -99,6 +99,9 @@ class IntelCPU(Thread):
     def get_current_stats() -> None:
         raise NotImplementedError
 
+    def stop(self):
+        self._stop_event.set()
+
     def run(self):
         try:
             for package in self._rapl_devices:
