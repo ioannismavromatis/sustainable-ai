@@ -1,6 +1,14 @@
 import platform
 import subprocess
 
+import psutil
+
+import utils.log as logger
+
+custom_logger = logger.get_logger(__name__)
+custom_logger = logger.set_level(__name__, "info")
+custom_logger.debug("Logger initiated: %s", custom_logger)
+
 
 def get_cpu_model():
     system = platform.system()
@@ -35,3 +43,16 @@ def get_cpu_model():
         chipset = "generic"
 
     return system, cpu_name, arch, chipset
+
+
+def cpu_utilisation():
+    per_cpu = psutil.cpu_percent(percpu=True)
+    mem_usage = psutil.virtual_memory()
+
+    custom_logger.debug("Core Number: %s", psutil.cpu_count())
+    custom_logger.debug("Core Utilisation: %s", per_cpu)
+    custom_logger.debug("RAM Free (%%): %s", mem_usage.percent)
+    custom_logger.debug("RAM Total (G): %s", mem_usage.total / (1024**3))
+    custom_logger.debug("RAM Used (G): %s", mem_usage.used / (1024**3))
+
+    return per_cpu, mem_usage

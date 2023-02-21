@@ -1,5 +1,5 @@
 ####### Other .gitignore ########
-data/
+dataset/
 *.pth
 model/
 *.csv

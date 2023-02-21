@@ -190,10 +190,10 @@ def main(args):
     )
 
     trainset = datasets.CIFAR10(
-        root="./data", train=True, download=True, transform=transform_train
+        root="./dataset", train=True, download=True, transform=transform_train
     )
     testset = datasets.CIFAR10(
-        root="./data", train=False, download=True, transform=transform_test
+        root="./dataset", train=False, download=True, transform=transform_test
     )
 
     train_loader = torch.utils.data.DataLoader(trainset, **train_kwargs)

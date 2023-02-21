@@ -8,6 +8,7 @@ import pandas as pd
 import utils.log as logger
 from utils import platform_info
 
+from .generic_cpu import GenericCPU
 from .intel import IntelCPU
 from .nvidia import NvidiaGPU
 
@@ -34,10 +35,7 @@ class Stats(Thread):
         self.file_name = file_name
         self.file_path = None
 
-    def __generic_cpu(self) -> None:
-        raise NotImplementedError
-
-    def __cpu_monitor(self, platform, cpu_type="generic") -> None:
+    def __cpu_monitor(self, platform, cpu_name, cpu_type="generic") -> None:
         if platform not in ["Darwin", "Linux", "Windows"]:
             raise ValueError(
                 f"'platform must be 'Darwin', 'Linux', or 'Windows', now it is '{platform}"
@@ -51,7 +49,8 @@ class Stats(Thread):
             self.intelCPU = IntelCPU(self.sleep_time)
             self.intelCPU.start()
         else:
-            self.__generic_cpu()
+            self.genericCPU = GenericCPU(self.sleep_time, cpu_name)
+            self.genericCPU.start()
 
     def __get_cpu_stats(self) -> None:
         raise NotImplementedError
@@ -180,9 +179,9 @@ class Stats(Thread):
         self._stop_event.set()
 
     def run(self):
-        system, _, _, chipset = platform_info.get_cpu_model()
+        system, cpu_name, _, chipset = platform_info.get_cpu_model()
         # self.__gpu_monitor()
-        self.__cpu_monitor(platform=system, cpu_type=chipset)
+        self.__cpu_monitor(platform=system, cpu_name=cpu_name, cpu_type=chipset)
         while not self._stop_event.is_set():
             # self.__get_cpu_stats()
             time.sleep(self.sleep_time)

@@ -3,9 +3,8 @@ import re
 import time
 from threading import Event, Thread
 
-import psutil
-
 import utils.log as logger
+from utils import platform_info
 
 custom_logger = logger.get_logger(__name__)
 custom_logger = logger.set_level(__name__, "info")
@@ -78,14 +77,7 @@ class IntelCPU(Thread):
         return 0
 
     def __get_utilisation(self) -> None:
-        per_cpu = psutil.cpu_percent(percpu=True)
-        mem_usage = psutil.virtual_memory()
-
-        custom_logger.debug("Core Number: %s", psutil.cpu_count())
-        custom_logger.debug("CORE Utilisation: %s", per_cpu)
-        custom_logger.debug("CPU Free (%%): %s", mem_usage.percent)
-        custom_logger.debug("CPU Total (G): %s", mem_usage.total / (1024**3))
-        custom_logger.debug("CPU Used (G): %s", mem_usage.used / (1024**3))
+        per_cpu, mem_usage = platform_info.cpu_utilisation()
 
         self.cpu_percent_all.append(sum(per_cpu) / len(per_cpu))
         self.memory_percent_all.append(mem_usage.percent)
@@ -108,8 +100,8 @@ class IntelCPU(Thread):
                 os.stat(os.path.join(RAPL_DIR, package))
 
             while not self._stop_event.is_set():
-                self.__get_energy()
                 self.__get_utilisation()
+                self.__get_energy()
 
                 custom_logger.debug(
                     "CPU energy consumption (mj): %s", self.energy_j_all
