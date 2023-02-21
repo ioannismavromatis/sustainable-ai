@@ -1,10 +1,13 @@
 import os
+import signal
 import time
-from threading import Thread
+from threading import Event, Thread
 
 import pandas as pd
 
 import utils.log as logger
+
+from .intel import IntelCPU
 
 custom_logger = logger.get_logger(__name__)
 custom_logger = logger.set_level(__name__, "info")
@@ -17,13 +20,13 @@ class Stats(Thread):
         pynvml,
         deviceCount,
         sleep_time,
-        net,
+        net=None,
         run_id=0,
         file_dir="./results",
         file_name="stats.csv",
     ):
         Thread.__init__(self)
-        self.daemon = False
+        self._stop_event = Event()
         self.run_id = run_id
 
         self.pynvml = pynvml
@@ -33,24 +36,49 @@ class Stats(Thread):
         self.file_dir = file_dir
         self.file_name = file_name
         self.file_path = None
-        self.power_w = []
-        self.temperature_C = []
-        self.memory_free_B = []
-        self.memory_used_B = []
+
+        self.gpu_power_w = []
+        self.gpu_temperature_C = []
+        self.gpu_memory_free_B = []
+        self.gpu_memory_used_B = []
+
+    def __generic_cpu(self) -> None:
+        raise NotImplementedError
+
+    def __cpu_stats(self, cpu_type="Intel", cpu_process="current") -> None:
+        if cpu_process not in ["current", "all"]:
+            raise ValueError(
+                f"'cpu_process must be either 'current' or 'all', now it is '{cpu_process}"
+            )
+
+        if cpu_type not in ["Intel", "generic"]:
+            raise ValueError(
+                f"'cpu_type must be either 'Intel' or 'generic', now it is '{cpu_type}"
+            )
+
+        if cpu_type == "Intel":
+
+            self.intelCPU = IntelCPU(self.sleep_time)
+            self.intelCPU.start()
+        else:
+            self.__generic_cpu()
+
+    def __get_cpu_stats(self) -> None:
+        raise NotImplementedError
 
     def __gpu_stats(self) -> None:
         for i in range(self.deviceCount):
             handle = self.pynvml.nvmlDeviceGetHandleByIndex(i)
 
-            self.power_w.append(self.pynvml.nvmlDeviceGetPowerUsage(handle))
-            self.temperature_C.append(
+            self.gpu_power_w.append(self.pynvml.nvmlDeviceGetPowerUsage(handle))
+            self.gpu_temperature_C.append(
                 self.pynvml.nvmlDeviceGetTemperature(
                     handle, self.pynvml.NVML_TEMPERATURE_GPU
                 )
             )
             memory = self.pynvml.nvmlDeviceGetMemoryInfo(handle)
-            self.memory_free_B.append(memory.free)
-            self.memory_used_B.append(memory.used)
+            self.gpu_memory_free_B.append(memory.free)
+            self.gpu_memory_used_B.append(memory.used)
 
             custom_logger.debug(
                 "Power: %s", self.pynvml.nvmlDeviceGetPowerUsage(handle)
@@ -84,48 +112,54 @@ class Stats(Thread):
             )
 
     def __construct_results_dict(self, mode, epoch):
-        results_power_w = dict()
-        results_temperature_C = dict()
-        results_memory_free_B = dict()
-        results_memory_used_B = dict()
+        if self.net is None:
+            custom_logger.critical("Network should not be None! Exiting program")
+            os.kill(os.getpid(), signal.SIGINT)
 
-        results_power_w["project_name"] = [self.__experiment_prefix(mode, "power")]
-        results_power_w["epoch"] = [epoch]
-        results_power_w["network"] = [self.net]
-        results_power_w["values"] = [self.power_w]
+        results_gpu_power_w = dict()
+        results_gpu_temperature_C = dict()
+        results_gpu_memory_free_B = dict()
+        results_gpu_memory_used_B = dict()
 
-        results_temperature_C["project_name"] = [self.__experiment_prefix(mode, "temp")]
-        results_temperature_C["epoch"] = [epoch]
-        results_temperature_C["network"] = [self.net]
-        results_temperature_C["values"] = [self.temperature_C]
+        results_gpu_power_w["project_name"] = [self.__experiment_prefix(mode, "power")]
+        results_gpu_power_w["epoch"] = [epoch]
+        results_gpu_power_w["network"] = [self.net]
+        results_gpu_power_w["values"] = [self.gpu_power_w]
 
-        results_memory_free_B["project_name"] = [
+        results_gpu_temperature_C["project_name"] = [
+            self.__experiment_prefix(mode, "temp")
+        ]
+        results_gpu_temperature_C["epoch"] = [epoch]
+        results_gpu_temperature_C["network"] = [self.net]
+        results_gpu_temperature_C["values"] = [self.gpu_temperature_C]
+
+        results_gpu_memory_free_B["project_name"] = [
             self.__experiment_prefix(mode, "memfree")
         ]
-        results_memory_free_B["epoch"] = [epoch]
-        results_memory_free_B["network"] = [self.net]
-        results_memory_free_B["values"] = [self.memory_free_B]
+        results_gpu_memory_free_B["epoch"] = [epoch]
+        results_gpu_memory_free_B["network"] = [self.net]
+        results_gpu_memory_free_B["values"] = [self.gpu_memory_free_B]
 
-        results_memory_used_B["project_name"] = [
+        results_gpu_memory_used_B["project_name"] = [
             self.__experiment_prefix(mode, "memused")
         ]
-        results_memory_used_B["epoch"] = [epoch]
-        results_memory_used_B["network"] = [self.net]
-        results_memory_used_B["values"] = [self.memory_used_B]
+        results_gpu_memory_used_B["epoch"] = [epoch]
+        results_gpu_memory_used_B["network"] = [self.net]
+        results_gpu_memory_used_B["values"] = [self.gpu_memory_used_B]
 
         return (
-            results_power_w,
-            results_temperature_C,
-            results_memory_free_B,
-            results_memory_used_B,
+            results_gpu_power_w,
+            results_gpu_temperature_C,
+            results_gpu_memory_free_B,
+            results_gpu_memory_used_B,
         )
 
     def __write_to_csv(self, mode, epoch):
         (
-            results_power_w,
-            results_temperature_C,
-            results_memory_free_B,
-            results_memory_used_B,
+            results_gpu_power_w,
+            results_gpu_temperature_C,
+            results_gpu_memory_free_B,
+            results_gpu_memory_used_B,
         ) = self.__construct_results_dict(mode, epoch)
 
         results_file = self.__find_file(mode)
@@ -133,20 +167,20 @@ class Stats(Thread):
 
         if not os.path.isfile(self.file_path):
             csv_file = open(self.file_path, "w+")
-            pd.DataFrame(results_power_w).to_csv(self.file_path, index=False)
+            pd.DataFrame(results_gpu_power_w).to_csv(self.file_path, index=False)
         else:
             csv_file = open(self.file_path, "a+")
-            pd.DataFrame(results_power_w).to_csv(
+            pd.DataFrame(results_gpu_power_w).to_csv(
                 self.file_path, mode="a+", header=False, index=False
             )
 
-        pd.DataFrame(results_temperature_C).to_csv(
+        pd.DataFrame(results_gpu_temperature_C).to_csv(
             self.file_path, mode="a+", header=False, index=False
         )
-        pd.DataFrame(results_memory_free_B).to_csv(
+        pd.DataFrame(results_gpu_memory_free_B).to_csv(
             self.file_path, mode="a+", header=False, index=False
         )
-        pd.DataFrame(results_memory_used_B).to_csv(
+        pd.DataFrame(results_gpu_memory_used_B).to_csv(
             self.file_path, mode="a+", header=False, index=False
         )
 
@@ -154,22 +188,30 @@ class Stats(Thread):
 
     def get_results(self):
         return (
-            self.power_w,
-            self.temperature_C,
-            self.memory_free_B,
-            self.memory_used_B,
+            self.gpu_power_w,
+            self.gpu_temperature_C,
+            self.gpu_memory_free_B,
+            self.gpu_memory_used_B,
         )
 
     def save_results(self, mode, epoch):
         self.__write_to_csv(mode, epoch)
 
+    def set_network(self, net):
+        self.net = net
+
     def reset(self):
-        self.power_w = []
-        self.temperature_C = []
-        self.memory_free_B = []
-        self.memory_used_B = []
+        self.gpu_power_w = []
+        self.gpu_temperature_C = []
+        self.gpu_memory_free_B = []
+        self.gpu_memory_used_B = []
+
+    def stop(self):
+        self._stop_event.set()
 
     def run(self):
-        while True:
+        self.__cpu_stats(cpu_type="Intel", cpu_process="current")
+        while not self._stop_event.is_set():
             self.__gpu_stats()
+            # self.__get_cpu_stats()
             time.sleep(self.sleep_time)

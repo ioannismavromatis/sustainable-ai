@@ -14,8 +14,14 @@ from models import *
 from power.generic_tracker import GenericTracker
 from power.stats import Stats
 from power.tool_results import ToolResults
-from utils import (arguments, ascii, clean, file_name_generator, format_time,
-                   progress_bar)
+from utils import (
+    arguments,
+    ascii,
+    clean,
+    file_name_generator,
+    format_time,
+    progress_bar,
+)
 
 ascii.print_ascii()
 
@@ -197,6 +203,15 @@ def main(args):
 
     pynvml.nvmlInit()
     deviceCount = pynvml.nvmlDeviceGetCount()
+    stats = Stats(
+        pynvml,
+        deviceCount,
+        SAMPLING_RATE,
+        run_id=args.run_id,
+    )
+
+    if args.get_stats:
+        stats.start()
 
     for net in network_list:
         start_epoch = 1  # start from epoch 1 or last model epoch
@@ -232,17 +247,12 @@ def main(args):
         )
         tracker = GenericTracker(args, net)
         results = ToolResults(net.__class__.__name__, run_id=args.run_id)
-        stats = Stats(
-            pynvml,
-            deviceCount,
-            SAMPLING_RATE,
-            net.__class__.__name__,
-            run_id=args.run_id,
-        )
+
+        stats.set_network(net)
 
         for epoch in range(start_epoch, args.epochs + 1):
             if args.get_stats:
-                stats.start()
+                stats.reset()
             if tracker.get_tracker():
                 tracker.start()
 
@@ -272,7 +282,9 @@ def main(args):
         custom_logger.info("Deleting current tracker and results objects...")
         del tracker
         del results
-        del stats
+
+    stats.stop()
+    del stats
 
 
 if __name__ == "__main__":
