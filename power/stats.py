@@ -36,7 +36,7 @@ class Stats(Thread):
     def __generic_cpu(self) -> None:
         raise NotImplementedError
 
-    def __cpu_stats(self, cpu_type="Intel", cpu_process="current") -> None:
+    def __cpu_monitor(self, cpu_type="Intel", cpu_process="current") -> None:
         if cpu_process not in ["current", "all"]:
             raise ValueError(
                 f"'cpu_process must be either 'current' or 'all', now it is '{cpu_process}"
@@ -48,7 +48,6 @@ class Stats(Thread):
             )
 
         if cpu_type == "Intel":
-
             self.intelCPU = IntelCPU(self.sleep_time)
             self.intelCPU.start()
         else:
@@ -57,7 +56,7 @@ class Stats(Thread):
     def __get_cpu_stats(self) -> None:
         raise NotImplementedError
 
-    def __gpu_stats(self) -> None:
+    def __gpu_monitor(self) -> None:
         self.nvidiaGPU = NvidiaGPU(self.sleep_time)
         self.nvidiaGPU.start()
 
@@ -178,8 +177,8 @@ class Stats(Thread):
         self._stop_event.set()
 
     def run(self):
-        self.__gpu_stats()
-        self.__cpu_stats(cpu_type="Intel", cpu_process="current")
+        self.__gpu_monitor()
+        self.__cpu_monitor(cpu_type="Intel", cpu_process="current")
         while not self._stop_event.is_set():
             # self.__get_cpu_stats()
             time.sleep(self.sleep_time)
