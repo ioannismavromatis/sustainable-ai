@@ -4,7 +4,7 @@ import time
 from threading import Event, Thread
 
 import utils.log as logger
-from utils import platform_info
+from utils import check_values, platform_info
 
 custom_logger = logger.get_logger(__name__)
 custom_logger = logger.set_level(__name__, "info")
@@ -19,7 +19,7 @@ class IntelCPU(Thread):
     def __init__(self, sleep_time: int):
         Thread.__init__(self)
         self._stop_event = Event()
-        self.sleep_time = sleep_time
+        self.sleep_time = check_values.set_time(sleep_time)
         self.energy_j_all = []
         self.delta_power_w_all = []
         self.cpu_percent_all = []

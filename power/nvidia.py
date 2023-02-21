@@ -6,6 +6,7 @@ from threading import Event, Thread
 import pynvml
 
 import utils.log as logger
+from utils import check_values
 
 custom_logger = logger.get_logger(__name__)
 custom_logger = logger.set_level(__name__, "info")
@@ -16,7 +17,7 @@ class NvidiaGPU(Thread):
     def __init__(self, sleep_time: int):
         Thread.__init__(self)
         self._stop_event = Event()
-        self.sleep_time = sleep_time
+        self.sleep_time = check_values.set_time(sleep_time)
         pynvml.nvmlInit()
         self.deviceCount = pynvml.nvmlDeviceGetCount()
 

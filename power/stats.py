@@ -6,7 +6,7 @@ from threading import Event, Thread
 import pandas as pd
 
 import utils.log as logger
-from utils import platform_info
+from utils import check_values, platform_info
 
 from .generic_cpu import GenericCPU
 from .intel import IntelCPU
@@ -28,8 +28,8 @@ class Stats(Thread):
     ):
         Thread.__init__(self)
         self._stop_event = Event()
-        self.run_id = run_id
-        self.sleep_time = sleep_time
+        self.run_id = check_values.set_id(run_id)
+        self.sleep_time = check_values.set_time(sleep_time)
         self.net = net
         self.file_dir = file_dir
         self.file_name = file_name

@@ -1,7 +1,5 @@
 import os
 import ssl
-import time
-import uuid
 
 import pandas as pd
 

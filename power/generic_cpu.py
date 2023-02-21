@@ -1,11 +1,12 @@
-import time
-import os
-from threading import Event, Thread
-import pandas as pd
 import difflib
+import os
+import time
+from threading import Event, Thread
+
+import pandas as pd
 
 import utils.log as logger
-from utils import platform_info
+from utils import check_values, platform_info
 
 custom_logger = logger.get_logger(__name__)
 custom_logger = logger.set_level(__name__, "info")
@@ -19,7 +20,7 @@ class GenericCPU(Thread):
     def __init__(self, sleep_time: int, cpu_name: str):
         Thread.__init__(self)
         self._stop_event = Event()
-        self.sleep_time = sleep_time
+        self.sleep_time = check_values.set_time(sleep_time)
         self.cpu_name = cpu_name
 
         self._tdp = self.__find_tdp(TDP_DATA)
@@ -50,13 +51,12 @@ class GenericCPU(Thread):
 
     def __get_energy(self) -> None:
         if len(self.cpu_percent_all) > 1:
-            utilisation = (self.cpu_percent_all[-1] + self.cpu_percent_all[-2])/2
-            delta_power = (utilisation/100) * self._tdp/3600 * self.sleep_time
-            
+            utilisation = (self.cpu_percent_all[-1] + self.cpu_percent_all[-2]) / 2
+            delta_power = (utilisation / 100) * self._tdp / 3600 * self.sleep_time
+
             custom_logger.debug("Current power consumption: %s (W)", delta_power)
             self.delta_power_w_all.append(delta_power)
-            
-        
+
     def __get_utilisation(self) -> None:
         per_cpu, mem_usage = platform_info.cpu_utilisation()
 

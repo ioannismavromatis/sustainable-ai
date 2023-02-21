@@ -1,5 +1,7 @@
 import argparse
 
+from utils import check_values
+
 
 def arguments():
     parser = argparse.ArgumentParser(
@@ -7,28 +9,28 @@ def arguments():
     )
     parser.add_argument(
         "--batch-size",
-        type=int,
+        type=check_values.non_negative_int,
         default=128,
         metavar="N",
         help="input batch size for training (default: %(default)s)",
     )
     parser.add_argument(
         "--test-size",
-        type=int,
+        type=check_values.non_negative_int,
         default=100,
         metavar="N",
         help="input batch size for testing (default: %(default)s)",
     )
     parser.add_argument(
         "--learning-rate",
-        type=float,
+        type=check_values.learning_rate,
         default=0.1,
         metavar="N",
         help="learning rate (default: %(default)s)",
     )
     parser.add_argument(
         "--epochs",
-        type=int,
+        type=check_values.non_negative_int,
         default=10,
         metavar="N",
         help="number of epochs to train (default: %(default)s)",
@@ -73,7 +75,7 @@ def arguments():
     )
     parser.add_argument(
         "--run-id",
-        type=int,
+        type=check_values.non_negative_int,
         default=0,
         metavar="N",
         help="use separate running identifier for multiple experiments",
