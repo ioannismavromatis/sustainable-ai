@@ -33,6 +33,7 @@ custom_logger.debug("Logger initiated: %s", custom_logger)
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+
 # Training
 def train(args, model, device, train_loader, optimizer, criterion, epoch, results):
     custom_logger.info("Training for Epoch: %s", epoch)

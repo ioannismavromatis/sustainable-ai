@@ -2,35 +2,36 @@ import argparse
 
 
 def arguments():
-    parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
+    parser = argparse.ArgumentParser(
+        description="Energy consumption of various state-of-the-art Machine Learning models"
+    )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=128,
         metavar="N",
-        help="input batch size for training (default: 128)",
+        help="input batch size for training (default: %(default)s)",
     )
     parser.add_argument(
-        "--test-batch-size",
+        "--test-size",
         type=int,
         default=100,
         metavar="N",
-        help="input batch size for testing (default: 100)",
+        help="input batch size for testing (default: %(default)s)",
     )
     parser.add_argument(
         "--learning-rate",
-        "-lr",
         type=float,
         default=0.1,
-        metavar="LR",
-        help="learning rate (default: 0.1)",
+        metavar="N",
+        help="learning rate (default: %(default)s)",
     )
     parser.add_argument(
         "--epochs",
         type=int,
         default=10,
         metavar="N",
-        help="number of epochs to train (default: 10)",
+        help="number of epochs to train (default: %(default)s)",
     )
     parser.add_argument(
         "--no-cuda", action="store_true", default=False, help="disables CUDA training"
@@ -43,49 +44,51 @@ def arguments():
     )
     parser.add_argument(
         "--save-model",
-        "-s",
         action="store_true",
         default=True,
-        help="For Saving the current Model",
+        help="save current model",
     )
     parser.add_argument(
-        "--evaluation-tool",
+        "--tool",
         action="store",
-        help="Load Tool for power consumption evaluation",
+        default="",
+        choices=["eco2ai", "codecarbon", "carbontracker"],
+        metavar="arg",
+        help="tool for power consumption evaluation (default: %(default)s)",
     )
     parser.add_argument(
-        "--resume", "-r", action="store_true", default=False, help="Resume from model"
+        "--resume", action="store_true", default=False, help="resume existing model"
     )
     parser.add_argument(
         "--fresh",
-        "-f",
         action="store_true",
         default=False,
-        help="Delete all old results",
+        help="delete old results",
     )
     parser.add_argument(
         "--no-progress-bar",
         action="store_false",
         default=True,
-        help="Hide the progress bar for training and inference",
+        help="hide progress bar for training and inference",
     )
     parser.add_argument(
         "--run-id",
         type=int,
         default=0,
-        help="Use a separate running identifier for multiple experiments",
+        metavar="N",
+        help="use separate running identifier for multiple experiments",
     )
     parser.add_argument(
         "--no-results",
         action="store_false",
         default=True,
-        help="Do not store results for training and inference",
+        help="do not store results for training and inference",
     )
     parser.add_argument(
         "--get-stats",
         action="store_true",
         default=False,
-        help="Get statistics for the GPU and CPU utilisation",
+        help="get statistics for the GPU and CPU utilisation",
     )
     args = parser.parse_args()
 

@@ -61,7 +61,6 @@ class GenericTracker:
                 )
                 tracker = power_tool.Tracker(cpu_processes="all", ignore_warnings=True)
             elif tool == "carbontracker":
-
                 tracker = power_tool.tracker.CarbonTracker(
                     epochs=self.args.epochs,
                     monitor_epochs=self.args.epochs,
