@@ -6,6 +6,7 @@ from threading import Event, Thread
 import pandas as pd
 
 import utils.log as logger
+from utils import platform_info
 
 from .intel import IntelCPU
 from .nvidia import NvidiaGPU
@@ -36,15 +37,14 @@ class Stats(Thread):
     def __generic_cpu(self) -> None:
         raise NotImplementedError
 
-    def __cpu_monitor(self, cpu_type="Intel", cpu_process="current") -> None:
-        if cpu_process not in ["current", "all"]:
+    def __cpu_monitor(self, platform, cpu_type="generic") -> None:
+        if platform not in ["Darwin", "Linux", "Windows"]:
             raise ValueError(
-                f"'cpu_process must be either 'current' or 'all', now it is '{cpu_process}"
+                f"'platform must be 'Darwin', 'Linux', or 'Windows', now it is '{platform}"
             )
-
-        if cpu_type not in ["Intel", "generic"]:
+        if cpu_type not in ["Intel", "AMD", "M1", "generic"]:
             raise ValueError(
-                f"'cpu_type must be either 'Intel' or 'generic', now it is '{cpu_type}"
+                f"'cpu_type must be 'Intel', 'AMD', 'M1', or 'generic', now it is '{cpu_type}"
             )
 
         if cpu_type == "Intel":
@@ -153,6 +153,9 @@ class Stats(Thread):
 
         csv_file.close()
 
+    def __stop_monitoring(self, system, chipset) -> None:
+        raise NotImplementedError
+
     def get_results(self):
         return (
             self.gpu_power_w,
@@ -167,21 +170,21 @@ class Stats(Thread):
     def set_network(self, net):
         self.net = net
 
-    def reset(self):
+    def reset(self) -> None:
         self.gpu_power_w = []
         self.gpu_temperature_C = []
         self.gpu_memory_free_B = []
         self.gpu_memory_used_B = []
 
-    def stop(self):
+    def stop(self) -> None:
         self._stop_event.set()
 
     def run(self):
-        self.__gpu_monitor()
-        self.__cpu_monitor(cpu_type="Intel", cpu_process="current")
+        system, _, _, chipset = platform_info.get_cpu_model()
+        # self.__gpu_monitor()
+        self.__cpu_monitor(platform=system, cpu_type=chipset)
         while not self._stop_event.is_set():
             # self.__get_cpu_stats()
             time.sleep(self.sleep_time)
 
-        self.intelCPU.stop()
-        self.nvidiaGPU.stop()
+        self.__stop_monitoring(system, chipset)

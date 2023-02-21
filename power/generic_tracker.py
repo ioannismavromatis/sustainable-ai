@@ -28,27 +28,27 @@ class GenericTracker:
         )
 
     def import_module(self):
-        if self.args.evaluation_tool == "eco2ai":
-            power_tool = __import__(self.args.evaluation_tool)
-        elif self.args.evaluation_tool == "carbontracker":
-            power_tool = __import__(self.args.evaluation_tool + ".tracker")
-        elif self.args.evaluation_tool == "codecarbon":
-            power_tool = __import__(self.args.evaluation_tool)
+        if self.args.tool == "eco2ai":
+            power_tool = __import__(self.args.tool)
+        elif self.args.tool == "carbontracker":
+            power_tool = __import__(self.args.tool + ".tracker")
+        elif self.args.tool == "codecarbon":
+            power_tool = __import__(self.args.tool)
 
         return power_tool
 
     def power_evaluation(self):
-        if self.args.evaluation_tool is not None:
-            tool = self.args.evaluation_tool.lower()
+        if self.args.tool != "":
+            tool = self.args.tool.lower()
             self.standardised_tool = tool
-            if self.args.evaluation_tool not in VALID_TOOLS:
+            if self.args.tool not in VALID_TOOLS:
                 raise ValueError(
-                    f'Tool "{self.args.evaluation_tool}" is not available tool for evaluation. Available tools are "Eco2AI", "CodeCarbon", and "CarbonTracker"'
+                    f'Tool "{self.args.tool}" is not available tool for evaluation. Available tools are "Eco2AI", "CodeCarbon", and "CarbonTracker"'
                 )
 
             custom_logger.info(
                 "Tool '%s' will be used for power performance evaluation",
-                self.args.evaluation_tool,
+                self.args.tool,
             )
 
             power_tool = self.import_module()

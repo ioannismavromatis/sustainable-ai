@@ -163,7 +163,7 @@ def main(args):
         custom_logger.info("CPU will be used")
 
     train_kwargs = {"batch_size": args.batch_size}
-    test_kwargs = {"batch_size": args.test_batch_size}
+    test_kwargs = {"batch_size": args.test_size}
     if use_cuda:
         cuda_kwargs = {"num_workers": 1, "pin_memory": True, "shuffle": True}
         train_kwargs.update(cuda_kwargs)
