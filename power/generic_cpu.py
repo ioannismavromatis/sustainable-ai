@@ -25,6 +25,7 @@ class GenericCPU(Thread):
 
         self._tdp = self.__find_tdp(TDP_DATA)
 
+        self.energy_j_all = []
         self.delta_power_w_all = []
         self.cpu_percent_all = []
         self.memory_percent_all = []
@@ -54,8 +55,17 @@ class GenericCPU(Thread):
             utilisation = (self.cpu_percent_all[-1] + self.cpu_percent_all[-2]) / 2
             delta_power = (utilisation / 100) * self._tdp / 3600 * self.sleep_time
 
-            custom_logger.debug("Current power consumption: %s (W)", delta_power)
             self.delta_power_w_all.append(delta_power)
+            self.energy_j_all.append(self._tdp*(utilisation / 100)*1000*self.sleep_time)
+            
+            custom_logger.debug("Current power consumption: %s (W)", delta_power)
+            custom_logger.debug("Current energy consumption: %s (mj)", self.energy_j_all[-1])
+
+    def reset(self) -> None:
+        self.energy_j_all = []
+        self.delta_power_w_all = []
+        self.cpu_percent_all = []
+        self.memory_percent_all = []
 
     def __get_utilisation(self) -> None:
         per_cpu, mem_usage = platform_info.cpu_utilisation()
