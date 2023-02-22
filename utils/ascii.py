@@ -15,6 +15,6 @@ def print_ascii():
     print(r"    | | |_ | '__/ _ \/ _ \ '_ \| |\/| | |      ")
     print(r"    | |__| | | |  __/  __/ | | | |  | | |____  ")
     print(r"     \_____|_|  \___|\___|_| |_|_|  |_|______| ")
-    print(r"      Making more efficient and sustainable    ")
+    print(r"     Creating more efficient and sustainable   ")
     print(r"           Machine Learning Pipelines          ")
     print(r"                                               ")

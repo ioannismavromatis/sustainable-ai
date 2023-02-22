@@ -21,6 +21,7 @@ class Stats(Thread):
     def __init__(
         self,
         sleep_time,
+        device,
         net=None,
         run_id=0,
         file_dir="./results",
@@ -30,6 +31,7 @@ class Stats(Thread):
         self._stop_event = Event()
         self.run_id = check_values.set_id(run_id)
         self.sleep_time = check_values.set_time(sleep_time)
+        self.device = device
         self.net = net
         self.file_dir = file_dir
         self.file_name = file_name
@@ -56,8 +58,10 @@ class Stats(Thread):
         raise NotImplementedError
 
     def __gpu_monitor(self) -> None:
-        self.nvidiaGPU = NvidiaGPU(self.sleep_time)
-        self.nvidiaGPU.start()
+        if self.device == 'cuda':
+            self.nvidiaGPU = NvidiaGPU(self.sleep_time)
+            self.nvidiaGPU.start()
+            
 
     def __experiment_prefix(self, mode, array_name):
         return (
@@ -152,8 +156,26 @@ class Stats(Thread):
 
         csv_file.close()
 
-    def __stop_monitoring(self, system, chipset) -> None:
-        raise NotImplementedError
+    def __return_monitors(self, chipset) -> list[str]:
+        monitor_interfaces = []
+        
+        if chipset == "Intel":
+            monitor_interfaces.append(self.intelCPU)
+        else:
+            monitor_interfaces.append(self.genericCPU)
+        
+        if self.device == 'cuda':
+            monitor_interfaces.append(self.nvidiaGPU)
+        
+        return  monitor_interfaces
+
+    def __stop_monitoring(self) -> None:
+        _, _, _, chipset = platform_info.get_cpu_model()
+        list_to_stop = self.__return_monitors(chipset)
+        
+        for device in list_to_stop:
+            device.stop()
+        
 
     def get_results(self):
         return (
@@ -170,20 +192,22 @@ class Stats(Thread):
         self.net = net
 
     def reset(self) -> None:
-        self.gpu_power_w = []
-        self.gpu_temperature_C = []
-        self.gpu_memory_free_B = []
-        self.gpu_memory_used_B = []
+        _, _, _, chipset = platform_info.get_cpu_model()
+        list_to_stop = self.__return_monitors(chipset)
+        
+        for device in list_to_stop:
+            device.reset()
 
     def stop(self) -> None:
         self._stop_event.set()
 
     def run(self):
         system, cpu_name, _, chipset = platform_info.get_cpu_model()
-        # self.__gpu_monitor()
+        if self.device in ['cuda', 'mps']:
+            self.__gpu_monitor()
         self.__cpu_monitor(platform=system, cpu_name=cpu_name, cpu_type=chipset)
         while not self._stop_event.is_set():
             # self.__get_cpu_stats()
             time.sleep(self.sleep_time)
 
-        self.__stop_monitoring(system, chipset)
+        self.__stop_monitoring()

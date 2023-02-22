@@ -197,6 +197,7 @@ def main(args):
 
     stats = Stats(
         SAMPLING_RATE,
+        device,
         run_id=args.run_id,
     )
 
