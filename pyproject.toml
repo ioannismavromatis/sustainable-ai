@@ -11,7 +11,7 @@ packages = [{include = "sustainable_ai"}]
 python = "^3.9"
 torch = "^1.13.1"
 torchvision = "^0.14.1"
-eco2ai = "^0.3.5"
+eco2ai = "^0.3.7"
 carbontracker = "^1.1.7"
 codecarbon = "^2.1.4"
 thread6 = "^0.2.0"
