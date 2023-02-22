@@ -56,3 +56,19 @@ def cpu_utilisation():
     custom_logger.debug("RAM Used (G): %s", mem_usage.used / (1024**3))
 
     return per_cpu, mem_usage
+
+
+def cpu_temperature(platform):
+    if platform != "Linux":
+        return 0
+        # raise NotImplementedError("CPU temperature not available on this system")
+
+    temperatures = psutil.sensors_temperatures()
+    if "coretemp" in temperatures:
+        cpu_temperatures = temperatures["coretemp"]
+        max_temp = max([temp.current for temp in cpu_temperatures])
+
+        custom_logger.debug("CPU temperature: %s", max_temp)
+        return max_temp
+
+    return 0

@@ -16,10 +16,12 @@ DRAM = 2
 
 
 class IntelCPU(Thread):
-    def __init__(self, sleep_time: int):
+    def __init__(self, sleep_time: int, dataMonitor: object):
         Thread.__init__(self)
         self._stop_event = Event()
         self.sleep_time = check_values.set_time(sleep_time)
+        self.dataMonitor = dataMonitor
+
         self.energy_j_all = []
         self.delta_power_w_all = []
         self.cpu_percent_all = []
@@ -88,10 +90,18 @@ class IntelCPU(Thread):
         self.cpu_percent_all = []
         self.memory_percent_all = []
 
-    def get_current_stats() -> None:
-        raise NotImplementedError
+    def get_current_stats(self) -> None:
+        values_to_save = (
+            self.energy_j_all,
+            self.delta_power_w_all,
+            self.cpu_percent_all,
+            self.memory_percent_all,
+            self.cpu_temperature_all,
+        )
+        self.dataMonitor.update_values_cpu(values_to_save)
+        self.reset()
 
-    def stop(self):
+    def stop(self) -> None:
         self._stop_event.set()
 
     def run(self):

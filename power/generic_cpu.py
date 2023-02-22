@@ -17,10 +17,13 @@ DEFAULT_TDP = 100
 
 
 class GenericCPU(Thread):
-    def __init__(self, sleep_time: int, cpu_name: str):
+    def __init__(self, sleep_time: int, dataMonitor: object):
         Thread.__init__(self)
         self._stop_event = Event()
         self.sleep_time = check_values.set_time(sleep_time)
+        self.dataMonitor = dataMonitor
+
+        _, cpu_name, _, _ = platform_info.get_cpu_model()
         self.cpu_name = cpu_name
 
         self._tdp = self.__find_tdp(TDP_DATA)
@@ -29,6 +32,7 @@ class GenericCPU(Thread):
         self.delta_power_w_all = []
         self.cpu_percent_all = []
         self.memory_percent_all = []
+        self.cpu_temperature_all = []
 
     def __find_tdp(self, filepath) -> int:
         try:
@@ -56,10 +60,14 @@ class GenericCPU(Thread):
             delta_power = (utilisation / 100) * self._tdp / 3600 * self.sleep_time
 
             self.delta_power_w_all.append(delta_power)
-            self.energy_j_all.append(self._tdp*(utilisation / 100)*1000*self.sleep_time)
-            
+            self.energy_j_all.append(
+                self._tdp * (utilisation / 100) * 1000 * self.sleep_time
+            )
+
             custom_logger.debug("Current power consumption: %s (W)", delta_power)
-            custom_logger.debug("Current energy consumption: %s (mj)", self.energy_j_all[-1])
+            custom_logger.debug(
+                "Current energy consumption: %s (mj)", self.energy_j_all[-1]
+            )
 
     def reset(self) -> None:
         self.energy_j_all = []
@@ -73,14 +81,29 @@ class GenericCPU(Thread):
         self.cpu_percent_all.append(sum(per_cpu) / len(per_cpu))
         self.memory_percent_all.append(mem_usage.percent)
 
-    def get_current_stats() -> None:
-        raise NotImplementedError
+    def __get_temperature(self, platform) -> None:
+        cpu_temperature = platform_info.cpu_temperature(platform)
 
-    def stop(self):
+        self.cpu_temperature_all.append(cpu_temperature)
+
+    def get_current_stats(self) -> None:
+        values_to_save = (
+            self.energy_j_all,
+            self.delta_power_w_all,
+            self.cpu_percent_all,
+            self.memory_percent_all,
+            self.cpu_temperature_all,
+        )
+        self.dataMonitor.update_values_cpu(values_to_save)
+        self.reset()
+
+    def stop(self) -> None:
         self._stop_event.set()
 
     def run(self):
+        platform, _, _, _ = platform_info.get_cpu_model()
         while not self._stop_event.is_set():
             self.__get_utilisation()
             self.__get_energy()
+            self.__get_temperature(platform)
             time.sleep(self.sleep_time)
