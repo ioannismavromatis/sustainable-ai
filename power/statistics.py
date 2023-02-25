@@ -40,3 +40,24 @@ class DataMonitor:
             self.gpu_temperature_C.append(lists[1])
             self.gpu_memory_free_B.append(lists[2])
             self.gpu_memory_used_B.append(lists[3])
+
+    def print_values(self):
+        with self.lock:
+            print("=========================================================")
+            print("Printing current statistics for all available attributes:")
+            for attr_name, attr_value in self.__dict__.items():
+                if attr_name is not "lock" and (
+                    attr_value or any(value != 0 for value in attr_value)
+                ):
+                    print(f"{attr_name} --> values: {attr_value}")
+
+    def construct_results(self) -> dict:
+        tmp_dict = {}
+        with self.lock:
+            for attr_name, attr_value in self.__dict__.items():
+                if attr_name is not "lock" and (
+                    attr_value or any(value != 0 for value in attr_value)
+                ):
+                    tmp_dict[attr_name] = attr_value
+
+        return tmp_dict

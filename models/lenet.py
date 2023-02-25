@@ -24,6 +24,7 @@ class LeNet(nn.Module):
         out = self.fc3(out)
         return out
 
+
 def test():
     net = LeNet()
     print(net)

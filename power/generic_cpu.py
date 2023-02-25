@@ -1,5 +1,4 @@
 import difflib
-import os
 import time
 from threading import Event, Thread
 
@@ -42,7 +41,9 @@ class GenericCPU(Thread):
             return DEFAULT_TDP
 
         tdp_table = pd.read_csv(filepath)
-        closest_match = difflib.get_close_matches(self.platform['cpu_name'], tdp_table.Name, n=1)[0]
+        closest_match = difflib.get_close_matches(
+            self.platform["cpu_name"], tdp_table.Name, n=1
+        )[0]
         pd_list = tdp_table["Name"].str.strip().tolist()
         try:
             idx = pd_list.index(closest_match)
@@ -55,11 +56,13 @@ class GenericCPU(Thread):
     def __get_energy(self) -> None:
         if len(self.cpu_percent_all) > 1:
             utilisation = (self.cpu_percent_all[-1] + self.cpu_percent_all[-2]) / 2
-            delta_power = (utilisation / 100) * self._tdp / 3600 * self.sleep_time
+            delta_power = round(
+                (utilisation / 100) * self._tdp / 3600 * self.sleep_time, 8
+            )
 
             self.delta_power_w_all.append(delta_power)
             self.energy_j_all.append(
-                self._tdp * (utilisation / 100) * 1000 * self.sleep_time
+                round(self._tdp * (utilisation / 100) * 1000 * self.sleep_time, 3)
             )
 
             custom_logger.debug("Current power consumption: %s (W)", delta_power)
@@ -72,15 +75,16 @@ class GenericCPU(Thread):
         self.delta_power_w_all = []
         self.cpu_percent_all = []
         self.memory_percent_all = []
+        self.cpu_temperature_all = []
 
     def __get_utilisation(self) -> None:
         per_cpu, mem_usage = platform_info.cpu_utilisation()
 
-        self.cpu_percent_all.append(sum(per_cpu) / len(per_cpu))
+        self.cpu_percent_all.append(round(sum(per_cpu) / len(per_cpu), 1))
         self.memory_percent_all.append(mem_usage.percent)
 
-    def __get_temperature(self, platform) -> None:
-        cpu_temperature = platform_info.cpu_temperature(platform)
+    def __get_temperature(self) -> None:
+        cpu_temperature = platform_info.cpu_temperature(self.platform["system_os"])
 
         self.cpu_temperature_all.append(cpu_temperature)
 
@@ -99,9 +103,8 @@ class GenericCPU(Thread):
         self._stop_event.set()
 
     def run(self):
-        platform, _, _, _ = platform_info.get_cpu_model()
         while not self._stop_event.is_set():
             self.__get_utilisation()
             self.__get_energy()
-            self.__get_temperature(platform)
+            self.__get_temperature()
             time.sleep(self.sleep_time)

@@ -1,9 +1,11 @@
 ####### Other .gitignore ########
+.DS_Store
 dataset/
 *.pth
 model/
 *.csv
 !tdp.csv
+results/
 
 ######## Python .gitignore ########
 # Byte-compiled / optimized / DLL files

@@ -1,9 +1,8 @@
+import json
 import os
 import signal
 import time
 from threading import Event, Thread
-
-import pandas as pd
 
 import utils.log as logger
 from utils import check_values, platform_info
@@ -26,7 +25,7 @@ class Stats(Thread):
         net=None,
         run_id=0,
         file_dir="./results",
-        file_name="stats.csv",
+        file_name="stats.json",
     ):
         Thread.__init__(self)
         self._stop_event = Event()
@@ -37,21 +36,21 @@ class Stats(Thread):
         self.file_dir = file_dir
         self.file_name = file_name
         self.file_path = None
-        
+
         self.platform = platform_info.get_cpu_model()
         self.dataMonitor = DataMonitor()
 
     def __cpu_monitor(self) -> None:
-        if self.platform['system_os'] not in ["Darwin", "Linux", "Windows"]:
+        if self.platform["system_os"] not in ["Darwin", "Linux", "Windows"]:
             raise ValueError(
                 f"'platform must be 'Darwin', 'Linux', or 'Windows', now it is '{ self.platform['system'] }"
             )
-        if self.platform['chipset'] not in ["Intel", "AMD", "M1", "generic"]:
+        if self.platform["chipset"] not in ["Intel", "AMD", "M1", "generic"]:
             raise ValueError(
                 f"'cpu_type must be 'Intel', 'AMD', 'M1', or 'generic', now it is '{ self.platform['chipset'] }"
             )
 
-        if self.platform['chipset'] == "Intel":
+        if self.platform["chipset"] == "Intel":
             self.intelCPU = IntelCPU(self.sleep_time, self.dataMonitor)
             self.intelCPU.start()
         else:
@@ -59,7 +58,7 @@ class Stats(Thread):
             self.genericCPU.start()
 
     def __get_cpu_stats(self) -> None:
-        if self.platform['chipset'] == "Intel":
+        if self.platform["chipset"] == "Intel":
             self.intelCPU.get_current_stats()
         else:
             self.genericCPU.get_current_stats()
@@ -72,12 +71,8 @@ class Stats(Thread):
             self.nvidiaGPU = NvidiaGPU(self.sleep_time)
             self.nvidiaGPU.start()
 
-    def __experiment_prefix(self, mode, array_name):
-        return (
-            mode + "-" + array_name + "-" + str(self.run_id)
-            if self.run_id != 0
-            else mode + "-" + array_name
-        )
+    def __experiment_prefix(self):
+        return "exp" + "_" + str(self.run_id)
 
     def __find_file(self, mode):
         tmp_list = self.file_name.split(".")
@@ -90,85 +85,40 @@ class Stats(Thread):
                 "A wrong mode type was given. Give either 'train' or 'test'."
             )
 
-    def __construct_results_dict(self, mode, epoch):
+    def __construct_results_dict(self, results_dict, epoch) -> dict:
         if self.net is None:
             custom_logger.critical("Network should not be None! Exiting program")
             os.kill(os.getpid(), signal.SIGINT)
 
-        results_gpu_power_w = dict()
-        results_gpu_temperature_C = dict()
-        results_gpu_memory_free_B = dict()
-        results_gpu_memory_used_B = dict()
+        experiment = self.__experiment_prefix()
+        if experiment not in results_dict:
+            results_dict[experiment] = dict()
+        if self.net not in results_dict[experiment]:
+            results_dict[experiment][self.net] = dict()
 
-        results_gpu_power_w["project_name"] = [self.__experiment_prefix(mode, "power")]
-        results_gpu_power_w["epoch"] = [epoch]
-        results_gpu_power_w["network"] = [self.net]
-        results_gpu_power_w["values"] = [self.gpu_power_w]
+        tmp_results = self.dataMonitor.construct_results()
+        results_dict[experiment][self.net][epoch] = tmp_results
 
-        results_gpu_temperature_C["project_name"] = [
-            self.__experiment_prefix(mode, "temp")
-        ]
-        results_gpu_temperature_C["epoch"] = [epoch]
-        results_gpu_temperature_C["network"] = [self.net]
-        results_gpu_temperature_C["values"] = [self.gpu_temperature_C]
+        return results_dict
 
-        results_gpu_memory_free_B["project_name"] = [
-            self.__experiment_prefix(mode, "memfree")
-        ]
-        results_gpu_memory_free_B["epoch"] = [epoch]
-        results_gpu_memory_free_B["network"] = [self.net]
-        results_gpu_memory_free_B["values"] = [self.gpu_memory_free_B]
-
-        results_gpu_memory_used_B["project_name"] = [
-            self.__experiment_prefix(mode, "memused")
-        ]
-        results_gpu_memory_used_B["epoch"] = [epoch]
-        results_gpu_memory_used_B["network"] = [self.net]
-        results_gpu_memory_used_B["values"] = [self.gpu_memory_used_B]
-
-        return (
-            results_gpu_power_w,
-            results_gpu_temperature_C,
-            results_gpu_memory_free_B,
-            results_gpu_memory_used_B,
-        )
-
-    def __write_to_csv(self, mode, epoch):
-        (
-            results_gpu_power_w,
-            results_gpu_temperature_C,
-            results_gpu_memory_free_B,
-            results_gpu_memory_used_B,
-        ) = self.__construct_results_dict(mode, epoch)
-
+    def __write_to_json(self, mode, epoch) -> None:
         results_file = self.__find_file(mode)
         self.file_path = self.file_dir + "/" + results_file
 
-        if not os.path.isfile(self.file_path):
-            csv_file = open(self.file_path, "w+")
-            pd.DataFrame(results_gpu_power_w).to_csv(self.file_path, index=False)
+        if os.path.exists(self.file_path):
+            with open(self.file_path, "r") as jsonFile:
+                results_dict = json.load(jsonFile)
         else:
-            csv_file = open(self.file_path, "a+")
-            pd.DataFrame(results_gpu_power_w).to_csv(
-                self.file_path, mode="a+", header=False, index=False
-            )
+            results_dict = dict()
 
-        pd.DataFrame(results_gpu_temperature_C).to_csv(
-            self.file_path, mode="a+", header=False, index=False
-        )
-        pd.DataFrame(results_gpu_memory_free_B).to_csv(
-            self.file_path, mode="a+", header=False, index=False
-        )
-        pd.DataFrame(results_gpu_memory_used_B).to_csv(
-            self.file_path, mode="a+", header=False, index=False
-        )
-
-        csv_file.close()
+        csv_data = self.__construct_results_dict(results_dict, epoch)
+        with open(self.file_path, "w+") as f:
+            json.dump(csv_data, f)
 
     def __return_monitors(self) -> list[str]:
         monitor_interfaces = []
 
-        if self.platform['chipset'] == "Intel":
+        if self.platform["chipset"] == "Intel":
             monitor_interfaces.append(self.intelCPU)
         else:
             monitor_interfaces.append(self.genericCPU)
@@ -179,15 +129,16 @@ class Stats(Thread):
         return monitor_interfaces
 
     def __stop_monitoring(self) -> None:
-        list_to_stop = self.__return_monitors(self.platform['chipset'])
+        list_to_stop = self.__return_monitors()
 
         for device in list_to_stop:
             device.stop()
 
-    def save_results(self, mode, epoch):
-        self.__write_to_csv(mode, epoch)
+    def save_results(self, mode, epoch) -> None:
+        self.__write_to_json(mode, epoch)
+        self.dataMonitor.reset_values()
 
-    def set_network(self, net):
+    def set_network(self, net) -> None:
         self.net = net
 
     def reset(self) -> None:
@@ -207,6 +158,6 @@ class Stats(Thread):
             self.__get_cpu_stats()
             if self.device in ["cuda", "mps"]:
                 self.__get_gpu_stats()
-            time.sleep(2)
+            time.sleep(1)
 
         self.__stop_monitoring()

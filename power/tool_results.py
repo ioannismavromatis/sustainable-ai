@@ -19,9 +19,14 @@ class ToolResults:
         self.project_name = net
         self.net = net
         self.file_dir = file_dir
+        self.__check_directory()
         self.file_name = file_name
         self.file_path = None
         self.run_id = run_id
+
+    def __check_directory(self):
+        if not os.path.isdir(self.file_dir):
+            os.makedirs(self.file_dir)
 
     def __experiment_prefix(self):
         return self.net + "-" + str(self.run_id) if self.run_id != 0 else self.net
