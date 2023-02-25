@@ -10,7 +10,7 @@ custom_logger = logger.set_level(__name__, "info")
 custom_logger.debug("Logger initiated: %s", custom_logger)
 
 
-def get_cpu_model():
+def get_cpu_model() -> dict:
     system = platform.system()
     if system == "Windows":
         arch = platform.machine()
@@ -42,7 +42,7 @@ def get_cpu_model():
     else:
         chipset = "generic"
 
-    return system, cpu_name, arch, chipset
+    return {"system_os": system, "cpu_name": cpu_name, "arch": arch, "chipset": chipset}
 
 
 def cpu_utilisation():

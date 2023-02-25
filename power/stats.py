@@ -37,28 +37,29 @@ class Stats(Thread):
         self.file_dir = file_dir
         self.file_name = file_name
         self.file_path = None
-
+        
+        self.platform = platform_info.get_cpu_model()
         self.dataMonitor = DataMonitor()
 
-    def __cpu_monitor(self, platform, cpu_name, cpu_type="generic") -> None:
-        if platform not in ["Darwin", "Linux", "Windows"]:
+    def __cpu_monitor(self) -> None:
+        if self.platform['system_os'] not in ["Darwin", "Linux", "Windows"]:
             raise ValueError(
-                f"'platform must be 'Darwin', 'Linux', or 'Windows', now it is '{platform}"
+                f"'platform must be 'Darwin', 'Linux', or 'Windows', now it is '{ self.platform['system'] }"
             )
-        if cpu_type not in ["Intel", "AMD", "M1", "generic"]:
+        if self.platform['chipset'] not in ["Intel", "AMD", "M1", "generic"]:
             raise ValueError(
-                f"'cpu_type must be 'Intel', 'AMD', 'M1', or 'generic', now it is '{cpu_type}"
+                f"'cpu_type must be 'Intel', 'AMD', 'M1', or 'generic', now it is '{ self.platform['chipset'] }"
             )
 
-        if cpu_type == "Intel":
+        if self.platform['chipset'] == "Intel":
             self.intelCPU = IntelCPU(self.sleep_time, self.dataMonitor)
             self.intelCPU.start()
         else:
             self.genericCPU = GenericCPU(self.sleep_time, self.dataMonitor)
             self.genericCPU.start()
 
-    def __get_cpu_stats(self, cpu_type) -> None:
-        if cpu_type == "Intel":
+    def __get_cpu_stats(self) -> None:
+        if self.platform['chipset'] == "Intel":
             self.intelCPU.get_current_stats()
         else:
             self.genericCPU.get_current_stats()
@@ -164,10 +165,10 @@ class Stats(Thread):
 
         csv_file.close()
 
-    def __return_monitors(self, chipset) -> list[str]:
+    def __return_monitors(self) -> list[str]:
         monitor_interfaces = []
 
-        if chipset == "Intel":
+        if self.platform['chipset'] == "Intel":
             monitor_interfaces.append(self.intelCPU)
         else:
             monitor_interfaces.append(self.genericCPU)
@@ -178,8 +179,7 @@ class Stats(Thread):
         return monitor_interfaces
 
     def __stop_monitoring(self) -> None:
-        _, _, _, chipset = platform_info.get_cpu_model()
-        list_to_stop = self.__return_monitors(chipset)
+        list_to_stop = self.__return_monitors(self.platform['chipset'])
 
         for device in list_to_stop:
             device.stop()
@@ -191,8 +191,7 @@ class Stats(Thread):
         self.net = net
 
     def reset(self) -> None:
-        _, _, _, chipset = platform_info.get_cpu_model()
-        list_to_stop = self.__return_monitors(chipset)
+        list_to_stop = self.__return_monitors()
 
         for device in list_to_stop:
             device.reset()
@@ -201,12 +200,11 @@ class Stats(Thread):
         self._stop_event.set()
 
     def run(self):
-        system, cpu_name, _, chipset = platform_info.get_cpu_model()
         if self.device in ["cuda", "mps"]:
             self.__gpu_monitor()
-        self.__cpu_monitor(platform=system, cpu_name=cpu_name, cpu_type=chipset)
+        self.__cpu_monitor()
         while not self._stop_event.is_set():
-            self.__get_cpu_stats(chipset)
+            self.__get_cpu_stats()
             if self.device in ["cuda", "mps"]:
                 self.__get_gpu_stats()
             time.sleep(2)

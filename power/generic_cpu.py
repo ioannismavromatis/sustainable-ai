@@ -23,9 +23,7 @@ class GenericCPU(Thread):
         self.sleep_time = check_values.set_time(sleep_time)
         self.dataMonitor = dataMonitor
 
-        _, cpu_name, _, _ = platform_info.get_cpu_model()
-        self.cpu_name = cpu_name
-
+        self.platform = platform_info.get_cpu_model()
         self._tdp = self.__find_tdp(TDP_DATA)
 
         self.energy_j_all = []
@@ -44,7 +42,7 @@ class GenericCPU(Thread):
             return DEFAULT_TDP
 
         tdp_table = pd.read_csv(filepath)
-        closest_match = difflib.get_close_matches(self.cpu_name, tdp_table.Name, n=1)[0]
+        closest_match = difflib.get_close_matches(self.platform['cpu_name'], tdp_table.Name, n=1)[0]
         pd_list = tdp_table["Name"].str.strip().tolist()
         try:
             idx = pd_list.index(closest_match)
