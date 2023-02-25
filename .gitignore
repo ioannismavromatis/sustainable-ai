@@ -3,6 +3,7 @@ dataset/
 *.pth
 model/
 *.csv
+!tdp.csv
 
 ######## Python .gitignore ########
 # Byte-compiled / optimized / DLL files
