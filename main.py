@@ -75,6 +75,7 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch, result
 def make_network_list():
     network_list = []
     custom_logger.info("Building model list..")
+    network_list.append(LeNet())
     network_list.append(SimpleDLA())
     network_list.append(VGG("VGG19"))
     network_list.append(ResNet18())
@@ -203,6 +204,7 @@ def main(args):
 
     if args.get_stats:
         stats.start()
+        time.sleep(2) # wait for 1 second to intialise thread - required for small models
 
     for net in network_list:
         start_epoch = 1  # start from epoch 1 or last model epoch
