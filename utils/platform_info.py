@@ -3,11 +3,10 @@ import subprocess
 
 import psutil
 
-import utils.log as logger
+from utils import log
 
-custom_logger = logger.get_logger(__name__)
-custom_logger = logger.set_level(__name__, "info")
-custom_logger.debug("Logger initiated: %s", custom_logger)
+custom_logger = log.get_logger(__name__)
+custom_logger = log.set_level(__name__, "info")
 
 
 def get_cpu_model() -> dict:

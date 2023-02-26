@@ -3,12 +3,10 @@ import re
 import time
 from threading import Event, Thread
 
-import utils.log as logger
-from utils import check_values, platform_info
+from utils import check_values, log, platform_info
 
-custom_logger = logger.get_logger(__name__)
-custom_logger = logger.set_level(__name__, "info")
-custom_logger.debug("Logger initiated: %s", custom_logger)
+custom_logger = log.get_logger(__name__)
+custom_logger = log.set_level(__name__, "info")
 
 RAPL_DIR = "/sys/class/powercap/"
 CPU = 0
@@ -16,21 +14,24 @@ DRAM = 2
 
 
 class IntelCPU(Thread):
-    def __init__(self, sleep_time: int, dataMonitor: object):
+    def __init__(self, sleep_time: int, data_monitor: object):
         Thread.__init__(self)
         self._stop_event = Event()
         self.sleep_time = check_values.set_time(sleep_time)
-        self.dataMonitor = dataMonitor
+        self.data_monitor = data_monitor
 
-        self.energy_j_all = []
-        self.delta_power_w_all = []
-        self.cpu_percent_all = []
-        self.memory_percent_all = []
-
+        self.__initialize_attributes()
         self._rapl_devices = []
         self._devices = []
 
         self.__get_rapl_devices()
+
+    def __initialize_attributes(self) -> None:
+        self._energy_j: list[float] = []
+        self._delta_power_w: list[float] = []
+        self._cpu_percent: list[float] = []
+        self._memory_percent: list[float] = []
+        self._cpu_temperature: list[float] = []
 
     def __convert_rapl_name(self, name, pattern) -> str:
         if re.match(pattern, name):
@@ -38,13 +39,14 @@ class IntelCPU(Thread):
 
     def __get_rapl_devices(self) -> None:
         packages = list(filter(lambda x: ":" in x, os.listdir(RAPL_DIR)))
-        parts_pattern = re.compile(r"intel-rapl:(\d):(\d)")
         devices_pattern = re.compile("intel-rapl:.")
 
         for package in packages:
             if re.fullmatch(devices_pattern, package):
-                with open(os.path.join(RAPL_DIR, package, "name"), "r") as f:
-                    name = f.read().strip()
+                with open(
+                    os.path.join(RAPL_DIR, package, "name"), "r", encoding="utf-8"
+                ) as file:
+                    name = file.read().strip()
                 if name != "psys":
                     self._rapl_devices.append(package)
                     self._devices.append(
@@ -52,25 +54,22 @@ class IntelCPU(Thread):
                     )
 
     def __read_energy(self, path) -> int:
-        with open(os.path.join(path, "energy_uj"), "r") as f:
-            return int(f.read())
+        with open(os.path.join(path, "energy_uj"), "r", encoding="utf-8") as file:
+            return int(file.read())
 
     def __get_energy(self) -> None:
         cpu_energy_j = 0
         for package in self._rapl_devices:
             cpu_energy_j += self.__read_energy(os.path.join(RAPL_DIR, package))
 
-        self.delta_power_w_all.append(self.__delta_power(cpu_energy_j))
-        if self.energy_j_all:
-            self.energy_j_all = [cpu_energy_j]
-        else:
-            self.energy_j_all.append(cpu_energy_j)
+        self._delta_power_w.append(self.__delta_power(cpu_energy_j))
+        self._energy_j.append(cpu_energy_j)
 
         custom_logger.debug("CPU energy consumption (mj): %s", cpu_energy_j)
 
     def __delta_power(self, last_measurement) -> int:
-        if self.energy_j_all:
-            joules = (last_measurement - self.energy_j_all[-1]) / 1000000
+        if self._energy_j:
+            joules = (last_measurement - self._energy_j[-1]) / 1000000
             watt = joules / self.sleep_time
 
             custom_logger.debug("CPU power consumption (w): %s", watt)
@@ -81,47 +80,35 @@ class IntelCPU(Thread):
     def __get_utilisation(self) -> None:
         per_cpu, mem_usage = platform_info.cpu_utilisation()
 
-        self.cpu_percent_all.append(sum(per_cpu) / len(per_cpu))
-        self.memory_percent_all.append(mem_usage.percent)
+        self._cpu_percent.append(sum(per_cpu) / len(per_cpu))
+        self._memory_percent.append(mem_usage.percent)
 
     def reset(self) -> None:
-        self.energy_j_all = []
-        self.delta_power_w_all = []
-        self.cpu_percent_all = []
-        self.memory_percent_all = []
+        self.__initialize_attributes()
 
     def get_current_stats(self) -> None:
         values_to_save = (
-            self.energy_j_all,
-            self.delta_power_w_all,
-            self.cpu_percent_all,
-            self.memory_percent_all,
-            self.cpu_temperature_all,
+            self._energy_j,
+            self._delta_power_w,
+            self._cpu_percent,
+            self._memory_percent,
+            self._cpu_temperature,
         )
-        self.dataMonitor.update_values_cpu(values_to_save)
+        self.data_monitor.update_values_cpu(values_to_save)
         self.reset()
 
     def stop(self) -> None:
         self._stop_event.set()
 
     def run(self):
-        try:
-            for package in self._rapl_devices:
-                os.stat(os.path.join(RAPL_DIR, package))
+        if not os.geteuid() == 0:
+            raise PermissionError("Provide SUDO rights to the script!!!!")
 
-            while not self._stop_event.is_set():
-                self.__get_utilisation()
-                self.__get_energy()
+        for package in self._rapl_devices:
+            os.stat(os.path.join(RAPL_DIR, package))
 
-                custom_logger.debug(
-                    "CPU energy consumption (mj): %s", self.energy_j_all
-                )
-                custom_logger.debug("CPU power (w): %s", self.delta_power_w_all)
-                custom_logger.debug("CPU utilisation (%%): %s", self.cpu_percent_all)
-                custom_logger.debug(
-                    "Memory utilisation (%%): %s", self.memory_percent_all
-                )
+        while not self._stop_event.is_set():
+            self.__get_utilisation()
+            self.__get_energy()
 
-                time.sleep(self.sleep_time)
-        except PermissionError:
-            custom_logger.critical("Provide SUDO rights to the script!!!!")
+            time.sleep(self.sleep_time)

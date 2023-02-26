@@ -1,17 +1,11 @@
 import os
-import ssl
 
 import pandas as pd
 
-import utils.log as logger
+from utils import log
 
-LOGGER = os.environ.get("LOGGER", "info")
-
-custom_logger = logger.get_logger(__name__)
-custom_logger = logger.set_level(__name__, LOGGER)
-custom_logger.debug("Logger initiated: %s", custom_logger)
-
-ssl._create_default_https_context = ssl._create_unverified_context
+custom_logger = log.get_logger(__name__)
+custom_logger = log.set_level(__name__, "info")
 
 
 class ToolResults:
@@ -62,15 +56,11 @@ class ToolResults:
         self.file_path = self.file_dir + "/" + results_file
 
         if not os.path.isfile(self.file_path):
-            csv_file = open(self.file_path, "w+")
             pd.DataFrame(results_dict).to_csv(self.file_path, index=False)
         else:
-            csv_file = open(self.file_path, "a+")
             pd.DataFrame(results_dict).to_csv(
                 self.file_path, mode="a", header=False, index=False
             )
-
-        csv_file.close()
 
     def save_results(self, mode, epoch, duration, step, loss, accuracy):
         self.__write_to_csv(mode, epoch, duration, step, loss, accuracy)

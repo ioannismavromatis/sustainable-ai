@@ -1,15 +1,8 @@
-import os
-import ssl
+from utils import log
 
-import utils.log as logger
+custom_logger = log.get_logger(__name__)
+custom_logger = log.set_level(__name__, "info")
 
-LOGGER = os.environ.get("LOGGER", "info")
-
-custom_logger = logger.get_logger(__name__)
-custom_logger = logger.set_level(__name__, LOGGER)
-custom_logger.debug("Logger initiated: %s", custom_logger)
-
-ssl._create_default_https_context = ssl._create_unverified_context
 VALID_TOOLS = ["eco2ai", "codecarbon", "carbontracker"]
 
 
@@ -97,7 +90,7 @@ class GenericTracker:
         return results
 
     def get_tracker(self):
-        if self.power_tool == None:
+        if self.power_tool is None:
             return False
 
         return True

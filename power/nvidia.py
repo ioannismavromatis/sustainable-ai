@@ -1,16 +1,12 @@
-import os
-import signal
 import time
 from threading import Event, Thread
 
 import pynvml
 
-import utils.log as logger
-from utils import check_values
+from utils import check_values, log
 
-custom_logger = logger.get_logger(__name__)
-custom_logger = logger.set_level(__name__, "info")
-custom_logger.debug("Logger initiated: %s", custom_logger)
+custom_logger = log.get_logger(__name__)
+custom_logger = log.set_level(__name__, "info")
 
 
 class NvidiaGPU(Thread):
@@ -19,24 +15,24 @@ class NvidiaGPU(Thread):
         self._stop_event = Event()
         self.sleep_time = check_values.set_time(sleep_time)
         pynvml.nvmlInit()
-        self.deviceCount = pynvml.nvmlDeviceGetCount()
+        self.device_count = pynvml.nvmlDeviceGetCount()
 
         self.gpu_power_w = []
-        self.gpu_temperature_C = []
-        self.gpu_memory_free_B = []
-        self.gpu_memory_used_B = []
+        self.gpu_temperature_c = []
+        self.gpu_memory_free_b = []
+        self.gpu_memory_used_b = []
 
     def __gpu_stats(self) -> None:
-        for i in range(self.deviceCount):
+        for i in range(self.device_count):
             handle = pynvml.nvmlDeviceGetHandleByIndex(i)
 
             self.gpu_power_w.append(pynvml.nvmlDeviceGetPowerUsage(handle))
-            self.gpu_temperature_C.append(
+            self.gpu_temperature_c.append(
                 pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
             )
             memory = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            self.gpu_memory_free_B.append(memory.free)
-            self.gpu_memory_used_B.append(memory.used)
+            self.gpu_memory_free_b.append(memory.free)
+            self.gpu_memory_used_b.append(memory.used)
 
             custom_logger.info("Power: %s", pynvml.nvmlDeviceGetPowerUsage(handle))
             custom_logger.info(
@@ -47,9 +43,9 @@ class NvidiaGPU(Thread):
 
     def reset(self):
         self.gpu_power_w = []
-        self.gpu_temperature_C = []
-        self.gpu_memory_free_B = []
-        self.gpu_memory_used_B = []
+        self.gpu_temperature_c = []
+        self.gpu_memory_free_b = []
+        self.gpu_memory_used_b = []
 
     def stop(self):
         self._stop_event.set()

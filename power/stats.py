@@ -4,17 +4,15 @@ import signal
 import time
 from threading import Event, Thread
 
-import utils.log as logger
-from utils import check_values, platform_info
+from utils import check_values, log, platform_info
 
 from .generic_cpu import GenericCPU
 from .intel import IntelCPU
 from .nvidia import NvidiaGPU
 from .statistics import DataMonitor
 
-custom_logger = logger.get_logger(__name__)
-custom_logger = logger.set_level(__name__, "info")
-custom_logger.debug("Logger initiated: %s", custom_logger)
+custom_logger = log.get_logger(__name__)
+custom_logger = log.set_level(__name__, "info")
 
 
 class Stats(Thread):
@@ -38,7 +36,10 @@ class Stats(Thread):
         self.file_path = None
 
         self.platform = platform_info.get_cpu_model()
-        self.dataMonitor = DataMonitor()
+        self.data_monitor = DataMonitor()
+
+        self.__gpu_monitor()
+        self.__cpu_monitor()
 
     def __cpu_monitor(self) -> None:
         if self.platform["system_os"] not in ["Darwin", "Linux", "Windows"]:
@@ -51,25 +52,25 @@ class Stats(Thread):
             )
 
         if self.platform["chipset"] == "Intel":
-            self.intelCPU = IntelCPU(self.sleep_time, self.dataMonitor)
-            self.intelCPU.start()
+            self.intel_cpu = IntelCPU(self.sleep_time, self.data_monitor)
+            self.intel_cpu.start()
         else:
-            self.genericCPU = GenericCPU(self.sleep_time, self.dataMonitor)
-            self.genericCPU.start()
+            self.generic_cpu = GenericCPU(self.sleep_time, self.data_monitor)
+            self.generic_cpu.start()
 
     def __get_cpu_stats(self) -> None:
         if self.platform["chipset"] == "Intel":
-            self.intelCPU.get_current_stats()
+            self.intel_cpu.get_current_stats()
         else:
-            self.genericCPU.get_current_stats()
+            self.generic_cpu.get_current_stats()
 
     def __get_gpu_stats(self) -> None:
         raise NotImplementedError
 
     def __gpu_monitor(self) -> None:
         if self.device == "cuda":
-            self.nvidiaGPU = NvidiaGPU(self.sleep_time)
-            self.nvidiaGPU.start()
+            self.nvidia_gpu = NvidiaGPU(self.sleep_time)
+            self.nvidia_gpu.start()
 
     def __experiment_prefix(self):
         return "exp" + "_" + str(self.run_id)
@@ -96,7 +97,7 @@ class Stats(Thread):
         if self.net not in results_dict[experiment]:
             results_dict[experiment][self.net] = dict()
 
-        tmp_results = self.dataMonitor.construct_results()
+        tmp_results = self.data_monitor.construct_results()
         results_dict[experiment][self.net][epoch] = tmp_results
 
         return results_dict
@@ -106,25 +107,25 @@ class Stats(Thread):
         self.file_path = self.file_dir + "/" + results_file
 
         if os.path.exists(self.file_path):
-            with open(self.file_path, "r") as jsonFile:
-                results_dict = json.load(jsonFile)
+            with open(self.file_path, "r", encoding="utf-8") as json_file:
+                results_dict = json.load(json_file)
         else:
             results_dict = dict()
 
         csv_data = self.__construct_results_dict(results_dict, epoch)
-        with open(self.file_path, "w+") as f:
-            json.dump(csv_data, f)
+        with open(self.file_path, "w+", encoding="utf-8") as file:
+            json.dump(csv_data, file)
 
     def __return_monitors(self) -> list[str]:
         monitor_interfaces = []
 
         if self.platform["chipset"] == "Intel":
-            monitor_interfaces.append(self.intelCPU)
+            monitor_interfaces.append(self.intel_cpu)
         else:
-            monitor_interfaces.append(self.genericCPU)
+            monitor_interfaces.append(self.generic_cpu)
 
         if self.device == "cuda":
-            monitor_interfaces.append(self.nvidiaGPU)
+            monitor_interfaces.append(self.nvidia_gpu)
 
         return monitor_interfaces
 
@@ -136,7 +137,7 @@ class Stats(Thread):
 
     def save_results(self, mode, epoch) -> None:
         self.__write_to_json(mode, epoch)
-        self.dataMonitor.reset_values()
+        self.data_monitor.reset_values()
 
     def set_network(self, net) -> None:
         self.net = net
@@ -151,9 +152,6 @@ class Stats(Thread):
         self._stop_event.set()
 
     def run(self):
-        if self.device in ["cuda", "mps"]:
-            self.__gpu_monitor()
-        self.__cpu_monitor()
         while not self._stop_event.is_set():
             self.__get_cpu_stats()
             if self.device in ["cuda", "mps"]:
