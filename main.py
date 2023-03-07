@@ -197,18 +197,21 @@ def main(args):
         root="./dataset", train=False, download=True, transform=transform_test
     )
 
+    testset = [testset] * 5
+    replicated_testset = torch.utils.data.ConcatDataset(testset)
+
     train_loader = torch.utils.data.DataLoader(trainset, **train_kwargs)
-    test_loader = torch.utils.data.DataLoader(testset, **test_kwargs)
+    test_loader = torch.utils.data.DataLoader(replicated_testset, **test_kwargs)
 
     network_list = make_network_list()
 
-    stats = Stats(
-        SAMPLING_RATE,
-        device,
-        run_id=args.run_id,
-    )
-
     if args.get_stats:
+        stats = Stats(
+            SAMPLING_RATE,
+            device,
+            run_id=args.run_id,
+        )
+
         stats.start()
         # wait for 2 second to intialise thread
         # required for small models
@@ -230,7 +233,6 @@ def main(args):
                     'No "model" was found for network "%s"! Skip loading and start from first epoch!',
                     net.__class__.__name__,
                 )
-
         model = net.to(device)
         if device == "cuda":
             model = torch.nn.DataParallel(model)
@@ -249,7 +251,8 @@ def main(args):
         tracker = GenericTracker(args, net)
         results = ToolResults(net.__class__.__name__, run_id=args.run_id)
 
-        stats.set_network(net.__class__.__name__)
+        if args.get_stats:
+            stats.set_network(net.__class__.__name__)
 
         for epoch in range(start_epoch, args.epochs + 1):
             if args.get_stats:

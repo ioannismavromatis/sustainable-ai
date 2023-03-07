@@ -23,7 +23,6 @@ class Stats(Thread):
         net=None,
         run_id=0,
         file_dir="./results",
-        file_name="stats.json",
     ):
         Thread.__init__(self)
         self._stop_event = Event()
@@ -32,7 +31,6 @@ class Stats(Thread):
         self.device = device
         self.net = net
         self.file_dir = file_dir
-        self.file_name = file_name
         self.file_path = None
 
         self.platform = platform_info.get_cpu_model()
@@ -76,11 +74,9 @@ class Stats(Thread):
         return "exp" + "_" + str(self.run_id)
 
     def __find_file(self, mode):
-        tmp_list = self.file_name.split(".")
-        tmp_list[0] = tmp_list[0] + "_" + mode
-        results_file = ".".join(map(str, tmp_list))
+        file_name = mode + ".json"
         if "train" in mode or "test" in mode:
-            return results_file
+            return file_name
         else:
             raise ValueError(
                 "A wrong mode type was given. Give either 'train' or 'test'."

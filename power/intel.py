@@ -102,7 +102,8 @@ class IntelCPU(Thread):
 
     def run(self):
         if not os.geteuid() == 0:
-            raise PermissionError("Provide SUDO rights to the script!!!!")
+            pass
+            # raise PermissionError("Provide SUDO rights to the script!!!!")
 
         for package in self._rapl_devices:
             os.stat(os.path.join(RAPL_DIR, package))
