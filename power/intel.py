@@ -21,6 +21,7 @@ class IntelCPU(Thread):
         self.data_monitor = data_monitor
 
         self.__initialize_attributes()
+        self.platform = platform_info.get_cpu_model()
         self._rapl_devices = []
         self._devices = []
 
@@ -83,6 +84,11 @@ class IntelCPU(Thread):
         self._cpu_percent.append(sum(per_cpu) / len(per_cpu))
         self._memory_percent.append(mem_usage.percent)
 
+    def __get_temperature(self) -> None:
+        current_temp = platform_info.cpu_temperature(self.platform["system_os"])
+
+        self._cpu_temperature.append(current_temp)
+
     def reset(self) -> None:
         self.__initialize_attributes()
 
@@ -111,5 +117,6 @@ class IntelCPU(Thread):
         while not self._stop_event.is_set():
             self.__get_utilisation()
             self.__get_energy()
+            self.__get_temperature()
 
             time.sleep(self.sleep_time)
