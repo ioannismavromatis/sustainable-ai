@@ -8,6 +8,6 @@ def file_name_generator(args, mode):
         mode = "nostats_" + mode
 
     if args.tool is not "":
-        mode = args.tool +  "_" + mode
+        mode = args.tool + "_" + mode
 
     return mode

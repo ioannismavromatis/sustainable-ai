@@ -13,6 +13,7 @@ class DataMonitor:
     gpu_temperature_c: list[float] = field(default_factory=lambda: [])
     gpu_memory_free_b: list[float] = field(default_factory=lambda: [])
     gpu_memory_used_b: list[float] = field(default_factory=lambda: [])
+    gpu_percent: list[float] = field(default_factory=lambda: [])
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def reset_values(self):
@@ -32,13 +33,15 @@ class DataMonitor:
             self.cpu_temperature_c.extend(lists[4])
 
     def update_values_gpu(
-        self, lists: tuple[list[float], list[float], list[float], list[float]]
+        self,
+        lists: tuple[list[float], list[float], list[float], list[float], list[float]],
     ) -> None:
         with self.lock:
-            self.gpu_power_w.append(lists[0])
-            self.gpu_temperature_c.append(lists[1])
-            self.gpu_memory_free_b.append(lists[2])
-            self.gpu_memory_used_b.append(lists[3])
+            self.gpu_power_w.extend(lists[0])
+            self.gpu_temperature_c.extend(lists[1])
+            self.gpu_memory_free_b.extend(lists[2])
+            self.gpu_memory_used_b.extend(lists[3])
+            self.gpu_percent.extend(lists[4])
 
     def construct_results(self) -> dict:
         tmp_dict = {}

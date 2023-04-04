@@ -28,7 +28,7 @@ class Stats(Thread):
         self._stop_event = Event()
         self.run_id = check_values.set_id(run_id)
         self.sleep_time = check_values.set_time(sleep_time)
-        self.device = device
+        self.device = str(device)  # device returned from PyTorch is an object
         self.net = net
         self.file_dir = file_dir
         self.file_path = None
@@ -63,11 +63,11 @@ class Stats(Thread):
             self.generic_cpu.get_current_stats()
 
     def __get_gpu_stats(self) -> None:
-        raise NotImplementedError
+        self.nvidia_gpu.get_current_stats()
 
     def __gpu_monitor(self) -> None:
         if self.device == "cuda":
-            self.nvidia_gpu = NvidiaGPU(self.sleep_time)
+            self.nvidia_gpu = NvidiaGPU(self.sleep_time, self.data_monitor)
             self.nvidia_gpu.start()
 
     def __experiment_prefix(self):
