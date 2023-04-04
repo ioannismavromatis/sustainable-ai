@@ -59,7 +59,6 @@ class NvidiaGPU(Thread):
             self._gpu_memory_used_b,
             self._gpu_percent,
         )
-        custom_logger.debug()
         self.data_monitor.update_values_gpu(values_to_save)
         self.reset()
 
