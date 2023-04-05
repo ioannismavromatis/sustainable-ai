@@ -17,7 +17,7 @@ def arguments():
     parser.add_argument(
         "--test-size",
         type=check_values.non_negative_int,
-        default=100,
+        default=128,
         metavar="N",
         help="input batch size for testing (default: %(default)s)",
     )
@@ -91,6 +91,13 @@ def arguments():
         action="store_true",
         default=False,
         help="get statistics for the GPU and CPU utilisation",
+    )
+    parser.add_argument(
+        "--network",
+        action="store",
+        default="",
+        metavar="arg",
+        help="define single network to use",
     )
     args = parser.parse_args()
 

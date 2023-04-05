@@ -1,5 +1,6 @@
 import os
 import ssl
+import sys
 import time
 
 import torch
@@ -77,27 +78,36 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch, result
         mode = file_name_generator(args, "train")
         results.save_results(mode, epoch, tot_time, step_time, final_loss, accuracy)
 
+def str_to_class(field):
+    try:
+        identifier = getattr(sys.modules[__name__], field)
+    except AttributeError:
+        raise NameError("%s doesn't exist." % field)
+    return identifier
 
 def make_network_list():
     network_list = []
     custom_logger.info("Building model list..")
-    network_list.append(LeNet())
-    network_list.append(SimpleDLA())
-    network_list.append(VGG("VGG19"))
-    network_list.append(ResNet18())
-    network_list.append(PreActResNet18())
-    network_list.append(GoogLeNet())
-    network_list.append(DenseNet121())
-    network_list.append(ResNeXt29_2x64d())
-    network_list.append(MobileNet())
-    network_list.append(MobileNetV2())
-    network_list.append(SENet18())
-    network_list.append(EfficientNetB0())
-    network_list.append(RegNetX_200MF())
-    network_list.append(RegNetX_200MF())
+    if args.network != "":
+        custom_logger.info("Model chosen is: %s", args.network)
+        network_list.append(str_to_class(args.network)())
+
+    else:
+        network_list.append(LeNet())
+        network_list.append(SimpleDLA())
+        network_list.append(VGG("VGG19"))
+        network_list.append(ResNet18())
+        network_list.append(PreActResNet18())
+        network_list.append(GoogLeNet())
+        network_list.append(DenseNet121())
+        network_list.append(ResNeXt29_2x64d())
+        network_list.append(MobileNet())
+        network_list.append(MobileNetV2())
+        network_list.append(SENet18())
+        network_list.append(EfficientNetB0())
+        network_list.append(RegNetX_200MF())
 
     return network_list
-
 
 # Testing
 def test(args, model, criterion, device, test_loader, epoch, net, results):
@@ -274,12 +284,16 @@ def main(args):
 
             if args.get_stats:
                 stats.reset()
+            if tracker.get_tracker():
+                tracker.start()                
 
             test(args, model, criterion, device, test_loader, epoch, net, results)
 
             if args.get_stats:
                 mode = file_name_generator(args, "test")
                 stats.save_results(mode, epoch)
+            if tracker.get_tracker():
+                tracker.stop()                
 
             scheduler.step()
 
@@ -287,8 +301,9 @@ def main(args):
         del tracker
         del results
 
-    stats.stop()
-    del stats
+    if args.get_stats:
+        stats.stop()
+        del stats
 
 
 if __name__ == "__main__":
