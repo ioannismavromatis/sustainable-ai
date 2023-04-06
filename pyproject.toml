@@ -17,6 +17,7 @@ thread6 = "^0.2.0"
 pynvml = "^11.4.1"
 apscheduler = "4.0.0a2"
 eco2ai = {path = "Eco2AI/dist/eco2ai-0.3.8-py3-none-any.whl"}
+seaborn = "^0.12.2"
 
 [tool.poetry.group.dev.dependencies]
 docformatter = "^1.5.1"
