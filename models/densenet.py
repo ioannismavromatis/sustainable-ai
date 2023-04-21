@@ -10,15 +10,17 @@ class Bottleneck(nn.Module):
     def __init__(self, in_planes, growth_rate):
         super(Bottleneck, self).__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
+        self.relu1 = nn.ReLU()
         self.conv1 = nn.Conv2d(in_planes, 4 * growth_rate, kernel_size=1, bias=False)
         self.bn2 = nn.BatchNorm2d(4 * growth_rate)
+        self.relu2 = nn.ReLU()
         self.conv2 = nn.Conv2d(
             4 * growth_rate, growth_rate, kernel_size=3, padding=1, bias=False
         )
 
     def forward(self, x):
-        out = self.conv1(F.relu(self.bn1(x)))
-        out = self.conv2(F.relu(self.bn2(out)))
+        out = self.conv1(self.relu1(self.bn1(x)))
+        out = self.conv2(self.relu2(self.bn2(out)))
         out = torch.cat([out, x], 1)
         return out
 
@@ -27,11 +29,13 @@ class Transition(nn.Module):
     def __init__(self, in_planes, out_planes):
         super(Transition, self).__init__()
         self.bn = nn.BatchNorm2d(in_planes)
+        self.relu = nn.ReLU()
         self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=1, bias=False)
+        self.avg_pool2d = nn.AvgPool2d(2)
 
     def forward(self, x):
-        out = self.conv(F.relu(self.bn(x)))
-        out = F.avg_pool2d(out, 2)
+        out = self.conv(self.relu(self.bn(x)))
+        out = self.avg_pool2d(out)
         return out
 
 
@@ -65,6 +69,8 @@ class DenseNet(nn.Module):
         num_planes += nblocks[3] * growth_rate
 
         self.bn = nn.BatchNorm2d(num_planes)
+        self.relu = nn.ReLU()
+        self.avg_pool2d = nn.AvgPool2d(4)
         self.linear = nn.Linear(num_planes, num_classes)
 
     def _make_dense_layers(self, block, in_planes, nblock):
@@ -80,7 +86,8 @@ class DenseNet(nn.Module):
         out = self.trans2(self.dense2(out))
         out = self.trans3(self.dense3(out))
         out = self.dense4(out)
-        out = F.avg_pool2d(F.relu(self.bn(out)), 4)
+        out = self.avg_pool2d(self.relu(self.bn(out)))
+        # out = F.avg_pool2d(F.relu(self.bn(out)), 4)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out

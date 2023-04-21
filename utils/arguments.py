@@ -24,7 +24,7 @@ def arguments():
     parser.add_argument(
         "--learning-rate",
         type=check_values.learning_rate,
-        default=0.1,
+        default=0.001,
         metavar="N",
         help="learning rate (default: %(default)s)",
     )

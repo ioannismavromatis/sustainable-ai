@@ -145,7 +145,7 @@ class Stats(Thread):
         for device in list_to_stop:
             device.reset()
         self.data_monitor.set_start_time()
-        
+
     def stop(self) -> None:
         self._stop_event.set()
 

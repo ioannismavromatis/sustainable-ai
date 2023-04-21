@@ -23,14 +23,16 @@ class Block(nn.Module):
             bias=False,
         )
         self.bn1 = nn.BatchNorm2d(in_planes)
+        self.relu1 = nn.ReLU()
         self.conv2 = nn.Conv2d(
             in_planes, out_planes, kernel_size=1, stride=1, padding=0, bias=False
         )
         self.bn2 = nn.BatchNorm2d(out_planes)
+        self.relu2 = nn.ReLU()
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.relu1(self.bn1(self.conv1(x)))
+        out = self.relu2(self.bn2(self.conv2(out)))
         return out
 
 
@@ -56,7 +58,9 @@ class MobileNet(nn.Module):
         super(MobileNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(32)
+        self.relu = nn.ReLU()
         self.layers = self._make_layers(in_planes=32)
+        self.avg_pool2d = nn.AvgPool2d(2)
         self.linear = nn.Linear(1024, num_classes)
 
     def _make_layers(self, in_planes):
@@ -69,9 +73,9 @@ class MobileNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn1(self.conv1(x)))
         out = self.layers(out)
-        out = F.avg_pool2d(out, 2)
+        out = self.avg_pool2d(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out

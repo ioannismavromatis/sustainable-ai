@@ -17,6 +17,7 @@ class Block(nn.Module):
         group_width = cardinality * bottleneck_width
         self.conv1 = nn.Conv2d(in_planes, group_width, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(group_width)
+        self.relu1 = nn.ReLU()
         self.conv2 = nn.Conv2d(
             group_width,
             group_width,
@@ -27,6 +28,7 @@ class Block(nn.Module):
             bias=False,
         )
         self.bn2 = nn.BatchNorm2d(group_width)
+        self.relu2 = nn.ReLU()
         self.conv3 = nn.Conv2d(
             group_width, self.expansion * group_width, kernel_size=1, bias=False
         )
@@ -44,13 +46,14 @@ class Block(nn.Module):
                 ),
                 nn.BatchNorm2d(self.expansion * group_width),
             )
+        self.relu3 = nn.ReLU()
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.relu1(self.bn1(self.conv1(x)))
+        out = self.relu2(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
+        out = out + self.shortcut(x)
+        out = self.relu3(out)
         return out
 
 
@@ -63,10 +66,12 @@ class ResNeXt(nn.Module):
 
         self.conv1 = nn.Conv2d(3, 64, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU()
         self.layer1 = self._make_layer(num_blocks[0], 1)
         self.layer2 = self._make_layer(num_blocks[1], 2)
         self.layer3 = self._make_layer(num_blocks[2], 2)
         # self.layer4 = self._make_layer(num_blocks[3], 2)
+        self.avg_pool2d = nn.AvgPool2d(8)
         self.linear = nn.Linear(cardinality * bottleneck_width * 8, num_classes)
 
     def _make_layer(self, num_blocks, stride):
@@ -82,12 +87,12 @@ class ResNeXt(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
         # out = self.layer4(out)
-        out = F.avg_pool2d(out, 8)
+        out = self.avg_pool2d(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out

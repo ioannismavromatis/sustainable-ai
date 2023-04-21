@@ -17,6 +17,7 @@ class BasicBlock(nn.Module):
             in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
         )
         self.bn1 = nn.BatchNorm2d(planes)
+        self.relu1 = nn.ReLU()
         self.conv2 = nn.Conv2d(
             planes, planes, kernel_size=3, stride=1, padding=1, bias=False
         )
@@ -34,12 +35,13 @@ class BasicBlock(nn.Module):
                 ),
                 nn.BatchNorm2d(self.expansion * planes),
             )
+        self.relu2 = nn.ReLU()
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.relu1(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
+        out = out + self.shortcut(x)
+        out = self.relu2(out)
         return out
 
 
@@ -55,10 +57,11 @@ class Root(nn.Module):
             bias=False,
         )
         self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU()
 
     def forward(self, xs):
         x = torch.cat(xs, 1)
-        out = F.relu(self.bn(self.conv(x)))
+        out = self.relu(self.bn(self.conv(x)))
         return out
 
 
@@ -99,25 +102,26 @@ class DLA(nn.Module):
         self.base = nn.Sequential(
             nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(16),
-            nn.ReLU(True),
+            nn.ReLU(),
         )
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(16),
-            nn.ReLU(True),
+            nn.ReLU(),
         )
 
         self.layer2 = nn.Sequential(
             nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(32),
-            nn.ReLU(True),
+            nn.ReLU(),
         )
 
         self.layer3 = Tree(block, 32, 64, level=1, stride=1)
         self.layer4 = Tree(block, 64, 128, level=2, stride=2)
         self.layer5 = Tree(block, 128, 256, level=2, stride=2)
         self.layer6 = Tree(block, 256, 512, level=1, stride=2)
+        self.avg_pool2d = nn.AvgPool2d(4)
         self.linear = nn.Linear(512, num_classes)
 
     def forward(self, x):
@@ -128,7 +132,7 @@ class DLA(nn.Module):
         out = self.layer4(out)
         out = self.layer5(out)
         out = self.layer6(out)
-        out = F.avg_pool2d(out, 4)
+        out = self.avg_pool2d(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out

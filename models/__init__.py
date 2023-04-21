@@ -13,3 +13,4 @@ from .resnet import *
 from .resnext import *
 from .senet import *
 from .vgg import *
+from .dpn import *

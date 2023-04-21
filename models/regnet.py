@@ -14,13 +14,16 @@ class SE(nn.Module):
 
     def __init__(self, in_planes, se_planes):
         super(SE, self).__init__()
+        self.adaptive_avg_pool2d = nn.AdaptiveAvgPool2d((1, 1))
         self.se1 = nn.Conv2d(in_planes, se_planes, kernel_size=1, bias=True)
+        self.relu = nn.ReLU()
         self.se2 = nn.Conv2d(se_planes, in_planes, kernel_size=1, bias=True)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        out = F.adaptive_avg_pool2d(x, (1, 1))
-        out = F.relu(self.se1(out))
-        out = self.se2(out).sigmoid()
+        out = self.adaptive_avg_pool2d(x)
+        out = self.relu(self.se1(out))
+        out = self.sigmoid(self.se2(out))
         out = x * out
         return out
 
@@ -32,6 +35,7 @@ class Block(nn.Module):
         w_b = int(round(w_out * bottleneck_ratio))
         self.conv1 = nn.Conv2d(w_in, w_b, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(w_b)
+        self.relu1 = nn.ReLU()
         # 3x3
         num_groups = w_b // group_width
         self.conv2 = nn.Conv2d(
@@ -44,6 +48,7 @@ class Block(nn.Module):
             bias=False,
         )
         self.bn2 = nn.BatchNorm2d(w_b)
+        self.relu2 = nn.ReLU()
         # se
         self.with_se = se_ratio > 0
         if self.with_se:
@@ -59,15 +64,16 @@ class Block(nn.Module):
                 nn.Conv2d(w_in, w_out, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(w_out),
             )
+        self.relu3 = nn.ReLU()
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.relu1(self.bn1(self.conv1(x)))
+        out = self.relu2(self.bn2(self.conv2(out)))
         if self.with_se:
             out = self.se(out)
         out = self.bn3(self.conv3(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
+        out = out + self.shortcut(x)
+        out = self.relu3(out)
         return out
 
 
@@ -78,10 +84,12 @@ class RegNet(nn.Module):
         self.in_planes = 64
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU()
         self.layer1 = self._make_layer(0)
         self.layer2 = self._make_layer(1)
         self.layer3 = self._make_layer(2)
         self.layer4 = self._make_layer(3)
+        self.adaptive_avg_pool2d = nn.AdaptiveAvgPool2d((1, 1))
         self.linear = nn.Linear(self.cfg["widths"][-1], num_classes)
 
     def _make_layer(self, idx):
@@ -102,12 +110,12 @@ class RegNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-        out = F.adaptive_avg_pool2d(out, (1, 1))
+        out = self.adaptive_avg_pool2d(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out

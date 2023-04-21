@@ -78,12 +78,14 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch, result
         mode = file_name_generator(args, "train")
         results.save_results(mode, epoch, tot_time, step_time, final_loss, accuracy)
 
+
 def str_to_class(field):
     try:
         identifier = getattr(sys.modules[__name__], field)
     except AttributeError:
         raise NameError("%s doesn't exist." % field)
     return identifier
+
 
 def make_network_list():
     network_list = []
@@ -108,6 +110,7 @@ def make_network_list():
         network_list.append(RegNetX_200MF())
 
     return network_list
+
 
 # Testing
 def test(args, model, criterion, device, test_loader, epoch, net, results):
@@ -285,7 +288,7 @@ def main(args):
             if args.get_stats:
                 stats.reset()
             if tracker.get_tracker():
-                tracker.start()                
+                tracker.start()
 
             test(args, model, criterion, device, test_loader, epoch, net, results)
 
@@ -293,7 +296,7 @@ def main(args):
                 mode = file_name_generator(args, "test")
                 stats.save_results(mode, epoch)
             if tracker.get_tracker():
-                tracker.stop()                
+                tracker.stop()
 
             scheduler.step()
 

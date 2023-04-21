@@ -22,18 +22,43 @@ def drop_connect(x, drop_ratio):
     return x
 
 
+class DropConnect(nn.Module):
+    def __init__(self, drop_ratio):
+        super().__init__()
+        self.drop_ratio = drop_ratio
+        self.keep_raio = 1.0 - drop_ratio
+
+    def __repr__(self):
+        return f"DropConnect{self.drop_ratio}"
+
+    def forward(self, input):
+        """
+        Implements drop connect
+        """
+        mask = torch.empty(
+            [input.shape[0], 1, 1, 1], dtype=input.dtype, device=input.device
+        )
+        mask.bernoulli_(self.keep_ratio)
+        out = input.div(self.keep_ratio)
+        out = out.mul(mask)
+        return out
+
+
 class SE(nn.Module):
     """Squeeze-and-Excitation block with Swish."""
 
     def __init__(self, in_channels, se_channels):
         super(SE, self).__init__()
+        self.adaptive_avg_pool2d = nn.AdaptiveAvgPool2d((1, 1))
         self.se1 = nn.Conv2d(in_channels, se_channels, kernel_size=1, bias=True)
+        self.swish = nn.SiLU()
         self.se2 = nn.Conv2d(se_channels, in_channels, kernel_size=1, bias=True)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        out = F.adaptive_avg_pool2d(x, (1, 1))
-        out = swish(self.se1(out))
-        out = self.se2(out).sigmoid()
+        out = self.adaptive_avg_pool2d(x)
+        out = self.swish(self.se1(out))
+        out = self.sigmoid(self.se2(out))
         out = x * out
         return out
 
@@ -63,6 +88,8 @@ class Block(nn.Module):
         )
         self.bn1 = nn.BatchNorm2d(channels)
 
+        if expand_ratio != 1:
+            self.swish1 = nn.SiLU()
         # Depthwise conv
         self.conv2 = nn.Conv2d(
             channels,
@@ -74,6 +101,7 @@ class Block(nn.Module):
             bias=False,
         )
         self.bn2 = nn.BatchNorm2d(channels)
+        self.swish2 = nn.SiLU()
 
         # SE layers
         se_channels = int(in_channels * se_ratio)
@@ -87,26 +115,32 @@ class Block(nn.Module):
 
         # Skip connection if in and out shapes are the same (MV-V2 style)
         self.has_skip = (stride == 1) and (in_channels == out_channels)
+        self.drop_connect = DropConnect(self.drop_rate)
 
     def forward(self, x):
-        out = x if self.expand_ratio == 1 else swish(self.bn1(self.conv1(x)))
-        out = swish(self.bn2(self.conv2(out)))
+        out = x if self.expand_ratio == 1 else self.swish1(self.bn1(self.conv1(x)))
+        out = self.swish2(self.bn2(self.conv2(out)))
         out = self.se(out)
         out = self.bn3(self.conv3(out))
         if self.has_skip:
             if self.training and self.drop_rate > 0:
-                out = drop_connect(out, self.drop_rate)
+                out = self.drop_connect(out)
             out = out + x
         return out
 
 
 class EfficientNet(nn.Module):
     def __init__(self, cfg, num_classes=10):
+        dropout_rate = cfg["dropout_rate"]
         super(EfficientNet, self).__init__()
         self.cfg = cfg
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(32)
+        self.swish = nn.SiLU()
         self.layers = self._make_layers(in_channels=32)
+        self.adaptive_avg_pool2d = nn.AdaptiveAvgPool2d(1)
+        if dropout_rate > 0:
+            self.dropout = nn.Dropout(dropout_rate)
         self.linear = nn.Linear(cfg["out_channels"][-1], num_classes)
 
     def _make_layers(self, in_channels):
@@ -142,13 +176,13 @@ class EfficientNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = swish(self.bn1(self.conv1(x)))
+        out = self.swish(self.bn1(self.conv1(x)))
         out = self.layers(out)
-        out = F.adaptive_avg_pool2d(out, 1)
+        out = self.adaptive_avg_pool2d(out)
         out = out.view(out.size(0), -1)
         dropout_rate = self.cfg["dropout_rate"]
         if self.training and dropout_rate > 0:
-            out = F.dropout(out, p=dropout_rate)
+            out = self.dropout(out)
         out = self.linear(out)
         return out
 

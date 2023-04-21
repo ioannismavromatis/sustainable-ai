@@ -1,5 +1,6 @@
 import re
 
+
 def format_time(seconds):
     days = int(seconds / 3600 / 24)
     seconds = seconds - days * 3600 * 24
@@ -32,10 +33,11 @@ def format_time(seconds):
         f = "0ms"
     return f
 
+
 def plot_time(time_str):
-    numbers_only = re.findall(r'\d+', time_str)
-    characters_only = re.split(r'\d+', time_str)
-    characters_only = [x for x in characters_only if x != '']
+    numbers_only = re.findall(r"\d+", time_str)
+    characters_only = re.split(r"\d+", time_str)
+    characters_only = [x for x in characters_only if x != ""]
     final_ms = 0
     for idx, number in enumerate(numbers_only):
         if characters_only[idx] == "D":
@@ -50,5 +52,5 @@ def plot_time(time_str):
             final_ms = final_ms + int(number)
         else:
             raise ValueError("Invalid time format")
-        
+
     return final_ms
