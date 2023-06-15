@@ -1,3 +1,6 @@
 [submodule "Eco2AI"]
 	path = Eco2AI
 	url = https://github.com/sb-ai-lab/Eco2AI
+[submodule "carbontracker"]
+	path = carbontracker
+	url = https://github.com/lfwa/carbontracker

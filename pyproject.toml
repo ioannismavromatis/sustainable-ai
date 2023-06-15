@@ -11,13 +11,15 @@ packages = [{include = "sustainable_ai"}]
 python = "^3.9"
 torch = "^1.13.1"
 torchvision = "^0.14.1"
-carbontracker = "^1.1.7"
 codecarbon = "^2.1.4"
 thread6 = "^0.2.0"
 pynvml = "^11.4.1"
 apscheduler = "4.0.0a2"
 eco2ai = {path = "Eco2AI/dist/eco2ai-0.3.8-py3-none-any.whl"}
 seaborn = "^0.12.2"
+importlib-metadata = "6.6.0"
+geocoder = "1.38.1"
+carbontracker = {path = "carbontracker/dist/carbontracker-1.1.7-py2.py3-none-any.whl"}
 
 [tool.poetry.group.dev.dependencies]
 docformatter = "^1.5.1"
