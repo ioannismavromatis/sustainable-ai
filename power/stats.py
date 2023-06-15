@@ -51,7 +51,13 @@ class Stats(Thread):
 
         if self.platform["chipset"] == "Intel":
             self.intel_cpu = IntelCPU(self.sleep_time, self.data_monitor)
-            self.intel_cpu.start()
+            if self.intel_cpu.rapl_devices_exist():
+                self.intel_cpu.start()
+            else:
+                custom_logger.warning("Intel CPU without RAPL support is detected. Defaulting to generic CPU." )
+                self.platform["chipset"] = "generic"
+                self.generic_cpu = GenericCPU(self.sleep_time, self.data_monitor)
+                self.generic_cpu.start()
         else:
             self.generic_cpu = GenericCPU(self.sleep_time, self.data_monitor)
             self.generic_cpu.start()

@@ -89,6 +89,12 @@ class IntelCPU(Thread):
 
         self._cpu_temperature.append(current_temp)
 
+    def rapl_devices_exist(self) -> None:
+        if not self._rapl_devices:
+            return False
+        
+        return True
+
     def reset(self) -> None:
         self.__initialize_attributes()
 
