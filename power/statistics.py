@@ -17,6 +17,7 @@ class DataMonitor:
     gpu_memory_free_b: list[float] = field(default_factory=lambda: [])
     gpu_memory_used_b: list[float] = field(default_factory=lambda: [])
     gpu_percent: list[float] = field(default_factory=lambda: [])
+    ram_power_w: list[float] = field(default_factory=lambda: [])
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def reset_values(self):
@@ -46,6 +47,10 @@ class DataMonitor:
             self.gpu_memory_free_b.extend(lists[2])
             self.gpu_memory_used_b.extend(lists[3])
             self.gpu_percent.extend(lists[4])
+
+    def update_values_ram(self, lists: tuple[list[float]]) -> None:
+        with self.lock:
+            self.ram_power_w.append(lists[0])
 
     def set_start_time(self) -> None:
         self.start_time = round(time.time_ns() / 1000000)

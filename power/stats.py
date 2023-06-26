@@ -9,6 +9,7 @@ from utils import check_values, log, platform_info
 from .generic_cpu import GenericCPU
 from .intel import IntelCPU
 from .nvidia import NvidiaGPU
+from .ram import RAM
 from .statistics import DataMonitor
 
 custom_logger = log.get_logger(__name__)
@@ -38,6 +39,7 @@ class Stats(Thread):
 
         self.__gpu_monitor()
         self.__cpu_monitor()
+        self.__ram_monitor()
 
     def __cpu_monitor(self) -> None:
         if self.platform["system_os"] not in ["Darwin", "Linux", "Windows"]:
@@ -68,13 +70,20 @@ class Stats(Thread):
         else:
             self.generic_cpu.get_current_stats()
 
-    def __get_gpu_stats(self) -> None:
-        self.nvidia_gpu.get_current_stats()
+    def __ram_monitor(self) -> None:
+        self.ram = RAM(self.sleep_time, self.data_monitor)
+        self.ram.start()
+        
+    def __get_ram_stats(self) -> None:
+        self.ram.get_current_stats()
 
     def __gpu_monitor(self) -> None:
         if self.device == "cuda":
             self.nvidia_gpu = NvidiaGPU(self.sleep_time, self.data_monitor)
             self.nvidia_gpu.start()
+
+    def __get_gpu_stats(self) -> None:
+        self.nvidia_gpu.get_current_stats()
 
     def __experiment_prefix(self):
         return "exp" + "_" + str(self.run_id)
@@ -128,6 +137,8 @@ class Stats(Thread):
 
         if self.device == "cuda":
             monitor_interfaces.append(self.nvidia_gpu)
+            
+        monitor_interfaces.append(self.ram)            
 
         return monitor_interfaces
 
@@ -158,6 +169,7 @@ class Stats(Thread):
     def run(self):
         while not self._stop_event.is_set():
             self.__get_cpu_stats()
+            self.__get_ram_stats()
             if self.device in ["cuda", "mps"]:
                 self.__get_gpu_stats()
             time.sleep(1)
