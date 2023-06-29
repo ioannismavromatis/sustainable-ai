@@ -15,7 +15,7 @@
 
 declare models=(LeNet SimpleDLA ResNet18 VGG PreActResNet18 GoogLeNet DenseNet121 ResNeXt29_2x64d MobileNet MobileNetV2 SENet18 EfficientNetB0 RegNetX_200MF DPN26)
 
-EPOCH=1
+EPOCH=10
 
 rm -rv ./results
 

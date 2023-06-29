@@ -34,10 +34,16 @@ class RAM(Thread):
         dimm_count = sum(1 for x in output.splitlines() if p.match(x))
 
         dimm_size = []
-        p = re.compile("\sVolatile\sSize:\s(\d+)\sGB")
+        p = re.compile("\sSize:\s(\d+)\s.B")
         for x in output.splitlines():
             if p.match(x):
-                dimm_size.append(p.match(x).group(1))
+                split_string = p.match(x).group(0).split()
+                if "MB" in split_string:
+                    dimm_size.append(int(p.match(x).group(1)) / 1024)
+                elif "GB" in split_string:
+                    dimm_size.append(p.match(x).group(1))
+                else:
+                    raise ValueError("Unknown memory size")
 
         voltage = []
         p = re.compile("\sConfigured\sVoltage:\s(\d+.\d+)\sV")
