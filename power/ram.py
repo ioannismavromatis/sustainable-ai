@@ -1,5 +1,6 @@
-import time, re
+import re
 import subprocess
+import time
 from threading import Event, Thread
 
 from utils import check_values, log
@@ -8,6 +9,7 @@ custom_logger = log.get_logger(__name__)
 custom_logger = log.set_level(__name__, "info")
 
 AVG_AMPS_PER_DIMM = 1.3
+
 
 class RAM(Thread):
     def __init__(self, sleep_time: int, data_monitor: object):
@@ -24,13 +26,15 @@ class RAM(Thread):
         self._ram_power_w: list[float] = []
 
     def __get_dram_dimms(self):
-        output = subprocess.check_output(["sudo", "dmidecode", "-t", "memory"], universal_newlines=True)
-        
+        output = subprocess.check_output(
+            ["sudo", "dmidecode", "-t", "memory"], universal_newlines=True
+        )
+
         p = re.compile("\sSpeed:\s(\d+)\sMT/s")
         dimm_count = sum(1 for x in output.splitlines() if p.match(x))
-        
+
         dimm_size = []
-        p = re.compile("\sSize:\s(\d+)\sMB")
+        p = re.compile("\sVolatile\sSize:\s(\d+)\sGB")
         for x in output.splitlines():
             if p.match(x):
                 dimm_size.append(p.match(x).group(1))
@@ -40,23 +44,23 @@ class RAM(Thread):
         for x in output.splitlines():
             if p.match(x):
                 voltage.append(p.match(x).group(1))
-        
+
         return dimm_count, dimm_size, voltage
 
     def __calculate_power(self):
         voltage = [float(v) for v in self.voltage]
         power_per_eight_gb = sum(v * AVG_AMPS_PER_DIMM for v in voltage)
-        total_power =  sum(map(int, self.dimm_size)) / 1000 / power_per_eight_gb
+        total_power = sum(map(int, self.dimm_size)) / power_per_eight_gb
         return total_power
-    
+
     def __get_energy(self) -> None:
-        self._ram_power_w.append(self._ram_power)
-        
+        self._ram_power_w.append(round(self._ram_power, 2))
+
     def reset(self) -> None:
         self.__initialize_attributes()
-        
+
     def get_current_stats(self) -> None:
-        values_to_save = (self._ram_power_w)
+        values_to_save = self._ram_power_w
         self.data_monitor.update_values_ram(values_to_save)
         self.reset()
 

@@ -56,7 +56,9 @@ class Stats(Thread):
             if self.intel_cpu.rapl_devices_exist():
                 self.intel_cpu.start()
             else:
-                custom_logger.warning("Intel CPU without RAPL support is detected. Defaulting to generic CPU." )
+                custom_logger.warning(
+                    "Intel CPU without RAPL support is detected. Defaulting to generic CPU."
+                )
                 self.platform["chipset"] = "generic"
                 self.generic_cpu = GenericCPU(self.sleep_time, self.data_monitor)
                 self.generic_cpu.start()
@@ -73,7 +75,7 @@ class Stats(Thread):
     def __ram_monitor(self) -> None:
         self.ram = RAM(self.sleep_time, self.data_monitor)
         self.ram.start()
-        
+
     def __get_ram_stats(self) -> None:
         self.ram.get_current_stats()
 
@@ -137,8 +139,8 @@ class Stats(Thread):
 
         if self.device == "cuda":
             monitor_interfaces.append(self.nvidia_gpu)
-            
-        monitor_interfaces.append(self.ram)            
+
+        monitor_interfaces.append(self.ram)
 
         return monitor_interfaces
 

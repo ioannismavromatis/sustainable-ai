@@ -13,7 +13,7 @@
 # shopt -s expand_aliases
 # alias pythonenv="~/.cache/pypoetry/virtualenvs/sustainable-ai-qHj6JKzP-py3.9/bin/python3"
 
-declare models=(LeNet SimpleDLA ResNet18 VGG PreActResNet18 GoogLeNet DenseNet121 ResNeXt29_2x64d MobileNet MobileNetV2 SENet18 EfficientNetB0 RegNetX_200MF)
+declare models=(LeNet SimpleDLA ResNet18 VGG PreActResNet18 GoogLeNet DenseNet121 ResNeXt29_2x64d MobileNet MobileNetV2 SENet18 EfficientNetB0 RegNetX_200MF DPN26)
 
 EPOCH=1
 

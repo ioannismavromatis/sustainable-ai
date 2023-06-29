@@ -12,6 +12,8 @@ custom_logger = log.set_level(__name__, "info")
 TDP_DATA = "./data/tdp.csv"
 DEFAULT_TDP = 100
 
+WATT_TO_MICROJOULE = 1000000
+
 
 class GenericCPU(Thread):
     def __init__(self, sleep_time: int, data_monitor: object):
@@ -52,12 +54,26 @@ class GenericCPU(Thread):
 
     def __get_energy(self) -> None:
         if len(self._cpu_percent) > 1:
-            utilisation = (self._cpu_percent[-1] + self._cpu_percent[-2]) / 2
-            delta_w = round((utilisation / 100) * self._tdp / 3600 * self.sleep_time, 8)
+            utilisation = sum(self._cpu_percent) / len(self._cpu_percent)
+            delta_w = round(
+                (utilisation / 100)
+                * self._tdp
+                / 3600
+                * self.sleep_time
+                * WATT_TO_MICROJOULE,
+                8,
+            )
 
             self._delta_power_w.append(delta_w)
             self._energy_j.append(
-                round(self._tdp * (utilisation / 100) * 1000 * self.sleep_time, 3)
+                round(
+                    self._tdp
+                    * (utilisation / 100)
+                    * 1000
+                    * self.sleep_time
+                    * WATT_TO_MICROJOULE,
+                    3,
+                )
             )
 
             custom_logger.debug("Current power consumption: %s (W)", delta_w)

@@ -12,6 +12,8 @@ RAPL_DIR = "/sys/class/powercap/"
 CPU = 0
 DRAM = 2
 
+WATT_TO_MICROJOULE = 1000000
+
 
 class IntelCPU(Thread):
     def __init__(self, sleep_time: int, data_monitor: object):
@@ -70,7 +72,7 @@ class IntelCPU(Thread):
 
     def __delta_power(self, last_measurement) -> int:
         if self._energy_j:
-            joules = (last_measurement - self._energy_j[-1]) / 1000000
+            joules = (last_measurement - self._energy_j[-1]) / WATT_TO_MICROJOULE
             watt = joules / self.sleep_time
 
             custom_logger.debug("CPU power consumption (w): %s", watt)
@@ -92,7 +94,7 @@ class IntelCPU(Thread):
     def rapl_devices_exist(self) -> None:
         if not self._rapl_devices:
             return False
-        
+
         return True
 
     def reset(self) -> None:

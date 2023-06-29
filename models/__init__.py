@@ -1,6 +1,7 @@
 from .densenet import *
 from .dla import *
 from .dla_simple import *
+from .dpn import *
 from .efficientnet import *
 from .googlenet import *
 from .lenet import *
@@ -13,4 +14,3 @@ from .resnet import *
 from .resnext import *
 from .senet import *
 from .vgg import *
-from .dpn import *
