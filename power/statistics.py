@@ -74,6 +74,9 @@ class DataMonitor:
           - lists[3]: Memory utilization percentage of the CPU over time.
         """
         with self.lock:
+            if any(not lst for lst in lists):
+                return
+            
             self.cpu_energy_uj.extend(lists[0])
             self.cpu_delta_power_w.extend(lists[1])
             self.cpu_percent.extend(lists[2])
@@ -96,6 +99,9 @@ class DataMonitor:
           - lists[4]: GPU utilization percentage over time.
         """
         with self.lock:
+            if any(not lst for lst in lists):
+                return
+            
             self.gpu_power_w.extend(lists[0])
             self.gpu_temperature_c.extend(lists[1])
             self.gpu_memory_free_b.extend(lists[2])
@@ -110,6 +116,9 @@ class DataMonitor:
         - lists (tuple[list[float]]): A tuple containing a list of RAM power consumption over time.
         """
         with self.lock:
+            if any(not lst for lst in lists):
+                return
+            
             self.ram_power_w.append(lists[0])
 
     def set_start_time(self) -> None:
