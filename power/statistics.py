@@ -74,14 +74,14 @@ class DataMonitor:
           - lists[3]: Memory utilization percentage of the CPU over time.
         """
         with self.lock:
-            if any(not lst for lst in lists):
+            try:
+                self.cpu_energy_uj.extend(lists[0])
+                self.cpu_delta_power_w.extend(lists[1])
+                self.cpu_percent.extend(lists[2])
+                self.cpu_memory_percent.extend(lists[3])
+                self.cpu_temperature_c.extend(lists[4])
+            except IndexError:
                 return
-            
-            self.cpu_energy_uj.extend(lists[0])
-            self.cpu_delta_power_w.extend(lists[1])
-            self.cpu_percent.extend(lists[2])
-            self.cpu_memory_percent.extend(lists[3])
-            self.cpu_temperature_c.extend(lists[4])
 
     def update_values_gpu(
         self,
@@ -99,14 +99,14 @@ class DataMonitor:
           - lists[4]: GPU utilization percentage over time.
         """
         with self.lock:
-            if any(not lst for lst in lists):
+            try:
+                self.gpu_power_w.extend(lists[0])
+                self.gpu_temperature_c.extend(lists[1])
+                self.gpu_memory_free_b.extend(lists[2])
+                self.gpu_memory_used_b.extend(lists[3])
+                self.gpu_percent.extend(lists[4])
+            except IndexError:
                 return
-            
-            self.gpu_power_w.extend(lists[0])
-            self.gpu_temperature_c.extend(lists[1])
-            self.gpu_memory_free_b.extend(lists[2])
-            self.gpu_memory_used_b.extend(lists[3])
-            self.gpu_percent.extend(lists[4])
 
     def update_values_ram(self, lists: tuple[list[float]]) -> None:
         """
@@ -116,10 +116,10 @@ class DataMonitor:
         - lists (tuple[list[float]]): A tuple containing a list of RAM power consumption over time.
         """
         with self.lock:
-            if any(not lst for lst in lists):
+            try:
+                self.ram_power_w.append(lists[0])
+            except IndexError:
                 return
-            
-            self.ram_power_w.append(lists[0])
 
     def set_start_time(self) -> None:
         """

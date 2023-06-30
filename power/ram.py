@@ -1,7 +1,7 @@
-import re
-import subprocess
+import re, os
 import time
 from threading import Event, Thread
+from pathlib import Path
 
 from utils import check_values, log
 
@@ -26,30 +26,34 @@ class RAM(Thread):
         self._ram_power_w: list[float] = []
 
     def __get_dram_dimms(self):
-        output = subprocess.check_output(
-            ["sudo", "dmidecode", "-t", "memory"], universal_newlines=True
-        )
+        ROOT_DIR = os.path.dirname(Path(__file__).parent)
+        file_path = ROOT_DIR + "/results/meminfo.txt"
+        if not os.path.isfile(file_path):
+            raise ValueError("Run 'dmidecode -t memory' and save the output to './results/meminfo.txt'")
 
-        p = re.compile("\sSpeed:\s(\d+)\sMT/s")
-        dimm_count = sum(1 for x in output.splitlines() if p.match(x))
+        with open(file_path, "r", encoding="utf-8") as file:
+            file_content = file.read()
+
+        p = re.compile(r"\sSpeed:\s(\d+)\sMT/s")
+        dimm_count = sum(1 for x in file_content.splitlines() if p.match(x))
 
         dimm_size = []
-        p = re.compile("\sSize:\s(\d+)\s.B")
-        for x in output.splitlines():
-            if p.match(x):
-                split_string = p.match(x).group(0).split()
+        p = re.compile(r"\sSize:\s(\d+)\s.B")
+        for line in file_content.splitlines():
+            if p.match(line):
+                split_string = p.match(line).group(0).split()
                 if "MB" in split_string:
-                    dimm_size.append(int(p.match(x).group(1)) / 1024)
+                    dimm_size.append(int(p.match(line).group(1)) / 1024)
                 elif "GB" in split_string:
-                    dimm_size.append(p.match(x).group(1))
+                    dimm_size.append(p.match(line).group(1))
                 else:
                     raise ValueError("Unknown memory size")
 
         voltage = []
-        p = re.compile("\sConfigured\sVoltage:\s(\d+.\d+)\sV")
-        for x in output.splitlines():
-            if p.match(x):
-                voltage.append(p.match(x).group(1))
+        p = re.compile(r"\sConfigured\sVoltage:\s(\d+.\d+)\sV")
+        for line in file_content.splitlines():
+            if p.match(line):
+                voltage.append(p.match(line).group(1))
 
         return dimm_count, dimm_size, voltage
 

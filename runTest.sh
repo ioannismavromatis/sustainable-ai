@@ -15,9 +15,11 @@
 
 declare models=(LeNet SimpleDLA ResNet18 VGG PreActResNet18 GoogLeNet DenseNet121 ResNeXt29_2x64d MobileNet MobileNetV2 SENet18 EfficientNetB0 RegNetX_200MF DPN26)
 
-EPOCH=10
+EPOCH=100
 
 rm -rv ./results
+mkdir ./results
+sudo dmidecode -t memory > ./results/meminfo.txt
 
 for model in "${models[@]}"; do
     python3 main.py --get-stats --epoch ${EPOCH} --network ${model}
