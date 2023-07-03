@@ -172,7 +172,7 @@ class Stats(Thread):
         while not self._stop_event.is_set():
             self.__get_cpu_stats()
             self.__get_ram_stats()
-            if self.device in ["cuda", "mps"]:
+            if self.device in ["cuda"]:
                 self.__get_gpu_stats()
             time.sleep(1)
 

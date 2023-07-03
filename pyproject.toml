@@ -20,6 +20,7 @@ seaborn = "^0.12.2"
 importlib-metadata = "6.6.0"
 geocoder = "1.38.1"
 carbontracker = {path = "carbontracker/dist/carbontracker-1.1.7-py2.py3-none-any.whl"}
+ptflops = "^0.7"
 
 [tool.poetry.group.dev.dependencies]
 docformatter = "^1.5.1"

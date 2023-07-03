@@ -20,6 +20,7 @@ from utils import (
     clean,
     file_name_generator,
     format_time,
+    model_parameters,
     progress_bar,
 )
 
@@ -257,6 +258,8 @@ def main(args):
             model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4
         )
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+
+        model_parameters(net, input_size=(3, 32, 32))
 
         custom_logger.info(
             "Create a new tracker for network: %s", net.__class__.__name__

@@ -1,7 +1,8 @@
-import re, os
+import os
+import re
 import time
-from threading import Event, Thread
 from pathlib import Path
+from threading import Event, Thread
 
 from utils import check_values, log
 
@@ -29,7 +30,9 @@ class RAM(Thread):
         ROOT_DIR = os.path.dirname(Path(__file__).parent)
         file_path = ROOT_DIR + "/results/meminfo.txt"
         if not os.path.isfile(file_path):
-            raise ValueError("Run 'dmidecode -t memory' and save the output to './results/meminfo.txt'")
+            raise ValueError(
+                "Run 'dmidecode -t memory' and save the output to './results/meminfo.txt'"
+            )
 
         with open(file_path, "r", encoding="utf-8") as file:
             file_content = file.read()
@@ -60,7 +63,12 @@ class RAM(Thread):
     def __calculate_power(self):
         voltage = [float(v) for v in self.voltage]
         power_per_eight_gb = sum(v * AVG_AMPS_PER_DIMM for v in voltage)
-        total_power = sum(map(int, self.dimm_size)) / power_per_eight_gb
+
+        try:
+            total_power = sum(map(int, self.dimm_size)) / power_per_eight_gb
+        except ZeroDivisionError:
+            return 0
+
         return total_power
 
     def __get_energy(self) -> None:
