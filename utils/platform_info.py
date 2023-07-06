@@ -10,6 +10,11 @@ custom_logger = log.set_level(__name__, "info")
 
 
 def get_cpu_model() -> dict:
+    """
+    Retrieve information about the CPU.
+
+    :return: Dictionary containing system_os, cpu_name, arch, chipset
+    """
     system = platform.system()
     if system == "Windows":
         arch = platform.machine()
@@ -30,6 +35,7 @@ def get_cpu_model() -> dict:
                 if line.strip().startswith("model name"):
                     cpu_name = line.split(":")[1].strip()
     else:
+        custom_logger.warning("Unsupported platform.")
         return None
 
     if "Intel" in cpu_name:
@@ -45,6 +51,11 @@ def get_cpu_model() -> dict:
 
 
 def cpu_utilisation():
+    """
+    Retrieve and log CPU utilization and memory usage.
+
+    :return: Tuple of per CPU utilization and memory usage object
+    """
     per_cpu = psutil.cpu_percent(percpu=True)
     mem_usage = psutil.virtual_memory()
 
@@ -59,8 +70,8 @@ def cpu_utilisation():
 
 def cpu_temperature(platform):
     if platform != "Linux":
+        custom_logger.warning("CPU temperature not available on this system")
         return 0
-        # raise NotImplementedError("CPU temperature not available on this system")
 
     temperatures = psutil.sensors_temperatures()
     if "coretemp" in temperatures:
@@ -71,3 +82,13 @@ def cpu_temperature(platform):
         return max_temp
 
     return 0
+
+
+def get_ram():
+    """
+    Retrieve the total RAM in gigabytes.
+
+    :return: Total RAM in gigabytes.
+    """
+    mem_usage = psutil.virtual_memory()
+    return mem_usage.total / (1024**3)

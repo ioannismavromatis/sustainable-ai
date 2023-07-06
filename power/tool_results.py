@@ -40,12 +40,11 @@ class ToolResults:
         tmp_list = self.file_name.split(".")
         tmp_list[0] = tmp_list[0] + "_" + mode
         results_file = ".".join(map(str, tmp_list))
-        if "train" in mode or "test" in mode:
-            return results_file
-        else:
-            raise ValueError(
-                "A wrong mode type was given. Give either 'train' or 'test'."
-            )
+
+        if all(item not in mode for item in ["train", "test"]):
+            raise ValueError("A wrong mode was given. Give either 'train' or 'test'.")
+
+        return results_file
 
     def __write_to_csv(self, mode, epoch, duration, step, loss, accuracy):
         results_dict = self.__construct_results_dict(
