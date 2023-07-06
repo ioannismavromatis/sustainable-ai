@@ -1,9 +1,9 @@
 import unittest
+
 from utils import format_time, plot_time
 
 
 class TestTimeFunctions(unittest.TestCase):
-
     def test_format_time(self):
         # Test cases (input_seconds, expected_output)
         test_cases = [
@@ -13,7 +13,7 @@ class TestTimeFunctions(unittest.TestCase):
             (3601, "1h1s"),
             (86401, "1D1s"),
             (1000.56, "16m40s"),
-            (3600, "1h")
+            (3600, "1h"),
         ]
 
         # Assert that format_time returns the expected output for each test case
@@ -29,7 +29,7 @@ class TestTimeFunctions(unittest.TestCase):
             ("1h1s", 3601000),
             ("1D1s", 86401000),
             ("16m40s", 1000000),
-            ("1h", 3600000)
+            ("1h", 3600000),
         ]
 
         # Assert that plot_time returns the expected output in milliseconds for each test case
@@ -42,5 +42,5 @@ class TestTimeFunctions(unittest.TestCase):
             plot_time("1x")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

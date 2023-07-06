@@ -1,10 +1,10 @@
-import unittest
 import logging
+import unittest
+
 from utils import get_logger, set_level, setup_custom_logger
 
 
 class TestLoggerFunctions(unittest.TestCase):
-
     def test_get_logger(self):
         # Test if a logger is returned
         logger = get_logger("test_logger_get")
@@ -37,5 +37,5 @@ class TestLoggerFunctions(unittest.TestCase):
         self.assertEqual(formatter.datefmt, "%d-%b-%y %H:%M:%S")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

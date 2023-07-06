@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from threading import Event, Thread
 
-from utils import check_values, log
+from utils import check_values, log, platform_info
 
 custom_logger = log.get_logger(__name__)
 custom_logger = log.set_level(__name__, "info")
@@ -30,33 +30,38 @@ class RAM(Thread):
         ROOT_DIR = os.path.dirname(Path(__file__).parent)
         file_path = ROOT_DIR + "/results/meminfo.txt"
         if not os.path.isfile(file_path):
-            raise ValueError(
-                "Run 'dmidecode -t memory' and save the output to './results/meminfo.txt'"
+            custom_logger.error(
+                "For accurate results run 'dmidecode -t memory' and save the output to './results/meminfo.txt'"
             )
+            custom_logger.warning("Returning some default values for DRAM")
+            return [1], [platform_info.get_ram()], [1.2]
 
         with open(file_path, "r", encoding="utf-8") as file:
             file_content = file.read()
 
-        p = re.compile(r"\sSpeed:\s(\d+)\sMT/s")
-        dimm_count = sum(1 for x in file_content.splitlines() if p.match(x))
+        p_speed = re.compile(r"\sSpeed:\s(\d+)\sMT/s")
+        p_size = re.compile(r"\sSize:\s(\d+)\s.B")
+        p_voltage = re.compile(r"\sConfigured\sVoltage:\s(\d+.\d+)\sV")
+
+        dimm_count = sum(1 for x in file_content if p_speed.match(x))
 
         dimm_size = []
-        p = re.compile(r"\sSize:\s(\d+)\s.B")
-        for line in file_content.splitlines():
-            if p.match(line):
-                split_string = p.match(line).group(0).split()
+        for line in file_content:
+            match = p_size.match(line)
+            if match:
+                split_string = match.group(0).split()
                 if "MB" in split_string:
-                    dimm_size.append(int(p.match(line).group(1)) / 1024)
+                    dimm_size.append(int(match.group(1)) / 1024)
                 elif "GB" in split_string:
-                    dimm_size.append(p.match(line).group(1))
+                    dimm_size.append(match.group(1))
                 else:
                     raise ValueError("Unknown memory size")
 
-        voltage = []
-        p = re.compile(r"\sConfigured\sVoltage:\s(\d+.\d+)\sV")
-        for line in file_content.splitlines():
-            if p.match(line):
-                voltage.append(p.match(line).group(1))
+        voltage = [
+            p_voltage.match(line).group(1)
+            for line in file_content
+            if p_voltage.match(line)
+        ]
 
         return dimm_count, dimm_size, voltage
 
