@@ -223,6 +223,7 @@ def main(args):
         stats = Stats(
             SAMPLING_RATE,
             device,
+            args.generic_cpu,
             run_id=args.run_id,
         )
 
