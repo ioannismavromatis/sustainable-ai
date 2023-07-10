@@ -46,7 +46,8 @@ class RAM(Thread):
         dimm_count = sum(1 for x in file_content if p_speed.match(x))
 
         dimm_size = []
-        for line in file_content:
+        voltage = []
+        for line in file_content.splitlines():
             match = p_size.match(line)
             if match:
                 split_string = match.group(0).split()
@@ -57,11 +58,9 @@ class RAM(Thread):
                 else:
                     raise ValueError("Unknown memory size")
 
-        voltage = [
-            p_voltage.match(line).group(1)
-            for line in file_content
-            if p_voltage.match(line)
-        ]
+            match = p_voltage.match(line)
+            if match:
+                voltage.append(match.group(1))
 
         return dimm_count, dimm_size, voltage
 
