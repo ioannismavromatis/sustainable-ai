@@ -7,6 +7,7 @@ model/
 !tdp.csv
 results/
 results_all/
+figures/
 
 ######## Python .gitignore ########
 # Byte-compiled / optimized / DLL files
