@@ -42,44 +42,40 @@ class GenericCPU(Thread):
 
         closest_match = difflib.get_close_matches(
             self.platform["cpu_name"], tdp_table.Name, n=1
-        )[0]
-        pd_list = tdp_table["Name"].str.strip().tolist()
-        try:
-            idx = pd_list.index(closest_match)
-            tdp = tdp_table.loc[idx, "TDP"]
-            custom_logger.info("Current TDP is: %s (W)", tdp)
-            return tdp
-        except ValueError:
+        )
+
+        if not closest_match:
+            custom_logger.warning(
+                "TDP not found. Default value used: %s (W)", DEFAULT_TDP
+            )
             return DEFAULT_TDP
+
+        closest_match = closest_match[0]
+        mask = tdp_table.Name == closest_match
+        index_of_closest_match = tdp_table[mask].index[0]
+
+        tdp = tdp_table.loc[index_of_closest_match, "TDP"]
+        custom_logger.info("Current TDP is: %s (W)", tdp)
+
+        return tdp
 
     def __get_energy(self) -> None:
         if len(self._cpu_percent) > 1:
-            utilisation = sum(self._cpu_percent) / len(self._cpu_percent)
-            delta_w = round(
-                (utilisation / 100)
-                * self._tdp
-                / 3600
-                * self.sleep_time
-                * WATT_TO_MICROJOULE,
-                8,
-            )
+            utilisation = self._cpu_percent[-1]
 
+            delta_w = self._tdp * (utilisation / 100.0)
             self._delta_power_w.append(delta_w)
-            self._energy_j.append(
-                round(
-                    self._tdp
-                    * (utilisation / 100)
-                    * 1000
-                    * self.sleep_time
-                    * WATT_TO_MICROJOULE,
-                    3,
-                )
-            )
 
-            custom_logger.debug("Current power consumption: %s (W)", delta_w)
-            custom_logger.debug(
-                "Current energy consumption: %s (mj)", self._energy_j[-1]
-            )
+            custom_logger.debug("Power consumption: %s (W)", delta_w)
+
+            if not self._energy_j:
+                self._energy_j.append(round(delta_w * WATT_TO_MICROJOULE * self.sleep_time))
+            else:
+                self._energy_j.append(
+                    self._energy_j[-1] + round(delta_w * WATT_TO_MICROJOULE * self.sleep_time)
+                )
+
+            custom_logger.debug("Energy consumption: %s (uj)", self._energy_j[-1])
 
     def reset(self) -> None:
         self.__initialize_attributes()

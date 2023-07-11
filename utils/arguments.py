@@ -45,6 +45,12 @@ def arguments():
         help="disables macOS GPU training",
     )
     parser.add_argument(
+        "--generic-cpu",
+        action="store_true",
+        default=False,
+        help="uses generic CPU for execution",
+    )
+    parser.add_argument(
         "--save-model",
         action="store_true",
         default=True,

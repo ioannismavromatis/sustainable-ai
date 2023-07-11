@@ -21,6 +21,7 @@ class Stats(Thread):
         self,
         sleep_time,
         device,
+        generic_cpu=False,
         net=None,
         run_id=0,
         file_dir="./results",
@@ -30,6 +31,7 @@ class Stats(Thread):
         self.run_id = check_values.set_id(run_id)
         self.sleep_time = check_values.set_time(sleep_time)
         self.device = str(device)  # device returned from PyTorch is an object
+        self.generic_cpu = generic_cpu
         self.net = net
         self.file_dir = file_dir
         self.file_path = None
@@ -53,12 +55,13 @@ class Stats(Thread):
 
         if self.platform["chipset"] == "Intel":
             self.intel_cpu = IntelCPU(self.sleep_time, self.data_monitor)
-            if self.intel_cpu.rapl_devices_exist():
+            if self.intel_cpu.rapl_devices_exist() and self.generic_cpu is False:
                 self.intel_cpu.start()
+                custom_logger.info("Intel CPU with RAPL support is detected.")
             else:
-                custom_logger.warning(
-                    "Intel CPU without RAPL support is detected. Defaulting to generic CPU."
-                )
+                if self.generic_cpu is False:
+                    custom_logger.warning("Intel CPU without RAPL support is detected.")
+                custom_logger.info("Defaulting to generic CPU.")
                 self.platform["chipset"] = "generic"
                 self.generic_cpu = GenericCPU(self.sleep_time, self.data_monitor)
                 self.generic_cpu.start()
