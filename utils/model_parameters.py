@@ -22,7 +22,12 @@ def model_parameters(net, input_size) -> None:
         None
     """
     param_size = 0
+    param_number = 0
+    trainable_params = 0
     for param in net.parameters():
+        param_number += param.nelement()
+        if param.requires_grad:
+            trainable_params += param.nelement() 
         param_size += param.nelement() * param.element_size()
     buffer_size = 0
     for buffer in net.buffers():
@@ -33,22 +38,19 @@ def model_parameters(net, input_size) -> None:
     model_file = RESULTS_DIR + net.__class__.__name__ + ".txt"
 
     with open(model_file, "w", encoding="utf-8") as filename:
-        macs, trainable_params = get_model_complexity_info(
+        macs = int(get_model_complexity_info(
             net,
             input_size,
             as_strings=False,
             print_per_layer_stat=True,
             verbose=False,
             ost=filename,
-        )
+        )[0])
 
-    custom_logger.debug(
-        f"Model size for model {net.__class__.__name__}: {size_all_mb:.3f}MB"
-    )
-    custom_logger.debug(f"MACs for model {net.__class__.__name__}: {macs}")
-    custom_logger.debug(
-        f"Trainable params for model {net.__class__.__name__}: {trainable_params}"
-    )
+    custom_logger.debug(f"Model size - {net.__class__.__name__}: {size_all_mb:.3f}MB")
+    custom_logger.debug(f"MACs - {net.__class__.__name__}: {macs}")
+    custom_logger.debug(f"Total params - {net.__class__.__name__}: {param_number}")
+    custom_logger.debug(f"Trainable params - {net.__class__.__name__}: {trainable_params}")
 
     results = RESULTS_DIR + "model_size.json"
     if os.path.exists(results):
@@ -61,7 +63,8 @@ def model_parameters(net, input_size) -> None:
         {
             net.__class__.__name__: {
                 "size_mb": round(size_all_mb, 3),
-                "parameters": param_size,
+                "parameters": param_number,
+                "param_size": param_size,
                 "buffer": buffer_size,
                 "macs": macs,
                 "trainable_params": trainable_params,
