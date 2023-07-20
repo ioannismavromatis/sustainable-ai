@@ -234,6 +234,7 @@ def main(args):
 
     for net in network_list:
         start_epoch = 1  # start from epoch 1 or last model epoch
+        custom_logger.info("Batch Size: %s", args.batch_size)
         custom_logger.info("Run experiment for network: %s", net.__class__.__name__)
         if args.resume:
             # Load model.
